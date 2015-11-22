@@ -11,5 +11,3 @@ class Heading(Model):
 
     class Meta:
         database = db
-
-# Heading.create_table()
