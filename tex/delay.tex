@@ -26,7 +26,8 @@ Cras convallis venenatis bibendum.
 \section{Introduction}
 
 Le but de ce projet est de prédire, en temps réel, l'heure d'arrivée aux arrêts d'un véhicule de transport en commun.
-Dans le cadre de ce travail, la prédiction sera effectuée pour des lignes de bus, tram et métro de la STIB\footnote{Société de transports en commun à Bruxelles (Belgique)}.
+Dans le cadre de ce travail, la prédiction sera effectuée pour des lignes de bus,
+tram et métro de la STIB\footnote{Société de transports en commun à Bruxelles (Belgique)}.
 
 Un réseau de transport en commun étant très difficile à modéliser de par sa complexité et son influençabilité à des événements stochastiques,
 l'approche qui sera utilisée ici sera non pas de modéliser le réseau pour prédire son état futur mais plutôt d'extrapoler la suite des trajets grâce à des données historiques récoltées au préalable.
@@ -36,6 +37,10 @@ l'approche qui sera utilisée ici sera non pas de modéliser le réseau pour pr�
 Pour pouvoir comparer plusieurs méthodes,
 il est important d'avoir des métriques bien définies mesurant la performance de celles-ci.
 
+La littérature utilise souvent le RMSE\footnote{Root Mean Squared Error}: l'erreur quadratique moyenne.
+
+Cependant, cette métrique souffre d'un problème :
+qu'un bus soit annoncé une minute à l'avance ou une minute en retard compte de la même manière alors que dans un cas l'usager attend son bus une minute de plus et que dans l'autre il le rate.
 
 \section{Algorithmes des prédiction}
 Plusieurs algorithmes seront implémentés et leur performances seront comparées.
