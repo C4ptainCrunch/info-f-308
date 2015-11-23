@@ -13,20 +13,36 @@ nimarcha@ulb.ac.be}
 \maketitle
 
 \begin{abstract}
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean purus tellus, fringilla id orci nec, molestie dignissim neque. Sed luctus vitae ante non condimentum. Pellentesque sollicitudin mi aliquam, euismod est at, cursus erat. Nulla porttitor enim tellus, sed aliquam nisl facilisis quis. Proin at odio convallis leo mattis vehicula. Nam ac suscipit lectus. Nullam tincidunt lobortis tincidunt. Praesent sodales leo ut quam mollis sodales. Aliquam non mauris ex. Donec sed elementum elit, pellentesque dapibus arcu. Cras convallis venenatis bibendum.
+Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+Aenean purus tellus, fringilla id orci nec, molestie dignissim neque.
+Sed luctus vitae ante non condimentum. Pellentesque sollicitudin mi aliquam, euismod est at, cursus erat.
+Nulla porttitor enim tellus, sed aliquam nisl facilisis quis.
+Proin at odio convallis leo mattis vehicula. Nam ac suscipit lectus.
+Nullam tincidunt lobortis tincidunt. Praesent sodales leo ut quam mollis sodales.
+Aliquam non mauris ex. Donec sed elementum elit, pellentesque dapibus arcu.
+Cras convallis venenatis bibendum.
 \end{abstract}
 
 \section{Introduction}
 
-Le but de ce projet est de prédire, en temps réel, l'heure d'arrivée aux arrêts d'un véhicule de transport en commun. Dans le cadre de ce travail, la prédiction sera effectuée pour des lignes de bus, tram et métro de la STIB\footnote{Société de transports en commun à Bruxelles (Belgique)}.
+Le but de ce projet est de prédire, en temps réel, l'heure d'arrivée aux arrêts d'un véhicule de transport en commun.
+Dans le cadre de ce travail, la prédiction sera effectuée pour des lignes de bus, tram et métro de la STIB\footnote{Société de transports en commun à Bruxelles (Belgique)}.
 
-Un réseau de transport en commun étant très difficile à modéliser de par sa complexité et son influençabilité à des événements stochastiques, l'approche qui sera utilisée ici sera non pas de modéliser le réseau pour prédire son état futur mais plutôt d'extrapoler la suite des trajets grâce à des données historiques récoltées au préalable.
+Un réseau de transport en commun étant très difficile à modéliser de par sa complexité et son influençabilité à des événements stochastiques,
+l'approche qui sera utilisée ici sera non pas de modéliser le réseau pour prédire son état futur mais plutôt d'extrapoler la suite des trajets grâce à des données historiques récoltées au préalable.
+
+\section{Métriques de performance}
+
+Pour pouvoir comparer plusieurs méthodes,
+il est important d'avoir des métriques bien définies mesurant la performance de celles-ci.
+
 
 \section{Algorithmes des prédiction}
 Plusieurs algorithmes seront implémentés et leur performances seront comparées.
 
 \subsection{Méthodes naïves}
-Deux méthodes fort naïves seront implémentées pour servir de base aux comparaisons faites par la suite. La première, la plus simple est de prédire tout le temps la même durée de trajet entre deux arrêts en utilisant simplement la durée spécifiée dans les horaires statiques.
+Deux méthodes fort naïves seront implémentées pour servir de base aux comparaisons faites par la suite.
+La première, la plus simple est de prédire tout le temps la même durée de trajet entre deux arrêts en utilisant simplement la durée spécifiée dans les horaires statiques.
 
 La seconde, celle utilisée par la STIB est de prédire le temps de trajet entre deux arrêts comme étant la moyenne des temps de trajets des trois derniers véhicules de la ligne étant passés sur ce tronçon.
 
