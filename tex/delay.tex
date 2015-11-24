@@ -1,6 +1,7 @@
 \documentclass[letterpaper]{article}
 \usepackage{natbib,alifexi}
 \usepackage[utf8]{inputenc}
+\usepackage{amsmath}
 
 \title{Estimation en temps réel des retards dans un réseau\\ de bus à l'aide de données historiques}
 \author{Nikita Marchant$^{1}$\\
@@ -47,19 +48,40 @@ Plusieurs algorithmes seront implémentés et leur performances seront comparée
 
 \subsection{Méthodes naïves}
 Deux méthodes fort naïves seront implémentées pour servir de base aux comparaisons faites par la suite.
-La première, la plus simple est de prédire tout le temps la même durée de trajet entre deux arrêts en utilisant simplement la durée spécifiée dans les horaires statiques.
+La première, la plus simple, est de prédire tout le temps la même durée de trajet entre deux arrêts en utilisant simplement la durée spécifiée dans les horaires statiques.
 
-La seconde, celle utilisée par la STIB est de prédire le temps de trajet entre deux arrêts comme étant la moyenne des temps de trajets des trois derniers véhicules de la ligne étant passés sur ce tronçon.
+La seconde, celle utilisée par la STIB, est de prédire le temps de trajet entre deux arrêts comme étant la moyenne des temps de trajets des trois derniers véhicules de la ligne étant passés sur ce tronçon.
 
-\subsection{K plus proches voisins}
+\subsection{$k$ plus proches voisins}
 
-L'algorithme des K plus proches voisins (ou k-nearest neighbors ou encore k-NN) est une méthode d'intelligence artificielle \citep{trevor2009elements}
+L'algorithme des $k$ plus proches voisins\footnote{$k$-nearest neighbors ou encore $k$-NN. (\cite{trevor2009elements})}
+est une méthode d'intelligence artificielle qui peut être utilisée aussi bien pour de la classification que pour de la régression.
+L'idée de cette méthode est de trouver les $k$ trajets les plus similaires à la cible et de les utiliser pour extrapoler le temps de trajet futur.
 
+Pour cela, on projette chaque trajet dans un espace à $n$ dimensions avec $n+1$ étant le nombre d'arrêts déjà effectués par le véhicule dont on cherche à prédire le temps de trajet (ce véhicule sera appelé $\alpha$).
+
+Les trajets sont donc représentés par le vecteur colonne
+$T_{\alpha} = \begin{pmatrix}d_{1,\beta}, d_{2,\beta}, ..., d_{n,\beta}\end{pmatrix}^{T}$
+avec $d_{i,\beta}$ étant le temps de trajet entre l'arrêt $i$ et $i+1$ pour le trajet $\beta$.
+La similarité $s_{\alpha,\beta}$ entre deux trajets $\alpha$ et $\beta$ est définie comme la distance Euclidienne entre deux vecteurs :
 
 \begin{eqnarray}
-v\sim\sqrt{D\Delta\epsilon}\;, \label{eq4}
+s_{\alpha,\beta} = \sqrt{\sum_{j=0}^{n}(d_{j,\alpha} - d_{j,\beta})^2}
 \end{eqnarray}
 
+La prédiction du temps de trajet $\hat{d}_{n+1,\alpha}$ est donnée par la moyenne des temps de trajet pour ces arrêts des $k$ plus proches voisins de $\alpha$ :
+
+\begin{eqnarray}
+\hat{d}_{n+1,\alpha} = \frac{1}{k} \sum_{j=0}^{k}d_{n+1,k}
+\end{eqnarray}
+
+\subsubsection{Pondération :}
+Il serait peut-être appréciable que les performances récentes d'un véhicule influencent plus la prédiction que ses performances plus anciennes. Pour cela, on peut introduire la notion d'une distance pondérée dans laquelle certaines dimensions subiraient un homothétie pour en augmenter au diminuer le poids.
+
+\subsubsection{Prise en compte d'autres critères que le temps de trajet :}
+Il pourrait être utile de prendre en compte d'autres critères que le temps de trajet pour déterminer la similitude entre deux trajets.
+Le jour de la semaine, la météo ou même l'heure sont des facteurs influençant le temps de trajet.
+L'heure étant une variable continue, nous pouvons simplement l'ajouter au vecteur $T_{\alpha}$ et utiliser ce vecteur de $n+1$ éléments pour la distance euclidienne. Pour ce qui est du jour de la semaine ou de la météo, ce sont des variable discrètes pour lesquelles il faudra définir une nouvelle fonction de distance.
 
 \footnotesize
 \bibliographystyle{apalike}
