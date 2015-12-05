@@ -1,8 +1,9 @@
 import peewee
-import peewee_async
+import peewee_asyncext
+
 from playhouse.postgres_ext import ArrayField
 
-db = peewee_async.PostgresqlDatabase('delay')
+db = peewee_asyncext.PooledPostgresqlExtDatabase('delay', register_hstore=False)
 
 
 class Heading(peewee.Model):

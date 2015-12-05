@@ -5,7 +5,7 @@ from datetime import datetime
 
 from stib.stib import Network
 from models import Heading, db
-from models import peewee_async as pa
+import peewee_async as pa
 
 
 class StibApiError(Exception):
