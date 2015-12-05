@@ -2,6 +2,7 @@ import aiohttp
 import asyncio
 from xml.etree import ElementTree
 from datetime import datetime
+import time
 
 from stib.stib import Network
 from models import Heading, db
@@ -12,7 +13,7 @@ class StibApiError(Exception):
     pass
 
 
-async def _route_data(line, way):
+async def route_data(line, way):
     URL = 'http://m.stib.be/api/getitinerary.php?line={}&iti={}'
 
     if way not in (1, 2):
@@ -30,7 +31,7 @@ async def _route_data(line, way):
 
 
 async def route_status(line, way, timeout=10):
-    xml = await asyncio.wait_for(_route_data(line, way), timeout)
+    xml = await asyncio.wait_for(route_data(line, way), timeout)
 
     try:
         tree = ElementTree.fromstring(xml)
@@ -81,19 +82,8 @@ async def save_route(line, way):
         timestamp=datetime.now()
     )
 
-
-async def route_loop(line, way):
-    loop = asyncio.get_event_loop()
-    while True:
-        start = loop.time()
-        await save_route(line, way)
-        stop = loop.time()
-
-        duration = stop - start
-        print((line, way), round(duration * 1000), 'ms', datetime.now())
-        wait = 20 - duration
-        if wait > 0:
-            await asyncio.sleep(wait)
+    await asyncio.sleep(20)
+    save_route(line, way)
 
 
 def main():
@@ -104,10 +94,10 @@ def main():
     # we only need line numbers and we don't want Noctis
     lines = [line.id for line in network.lines if 'N' not in str(line.id)]
     routes = [(line, 1) for line in lines] + [(line, 2) for line in lines]
-    routes = routes[:5]
+    routes = routes
 
     for line, way in routes:
-        asyncio.async(route_loop(line, way))
+        asyncio.async(save_route(line, way))
 
     loop.run_forever()
 
