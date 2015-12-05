@@ -3,10 +3,15 @@ import asyncio
 from xml.etree import ElementTree
 from datetime import datetime
 import time
+import random
 
 from stib.stib import Network
 from models import Heading, db
 import peewee_async as pa
+
+PERIOD = 30
+FAIL_WAIT_TIME = 2
+CONCURRENCY = 10
 
 
 class StibApiError(Exception):
@@ -31,7 +36,10 @@ async def route_data(line, way):
 
 
 async def route_status(line, way, timeout=10):
-    xml = await asyncio.wait_for(route_data(line, way), timeout)
+    try:
+        xml = await asyncio.wait_for(route_data(line, way), timeout)
+    except asyncio.TimeoutError as e:
+        raise StibApiError('Timeout') from e
 
     try:
         tree = ElementTree.fromstring(xml)
@@ -69,21 +77,29 @@ async def route_status(line, way, timeout=10):
     return output
 
 
-async def save_route(line, way):
-    try:
-        route = await route_status(line, way)
-    except StibApiError as e:
-        print(e, (line, way))
-        return None
+async def save_route(line, way, semaphore):
+    # wait between 0 and 10 seconds
+    await asyncio.sleep(random.random() * PERIOD)
 
-    await pa.create_object(
-        Heading, line=line,
-        way=way, stops=route,
-        timestamp=datetime.now()
-    )
+    while True:
+        try:
+            # limit the number of coroutines
+            # in this block
+            async with semaphore:
+                route = await route_status(line, way)
 
-    await asyncio.sleep(20)
-    save_route(line, way)
+        except StibApiError as e:
+            await asyncio.sleep(PERIOD)
+            print(e, (line, way))
+
+        else:
+            await pa.create_object(
+                Heading, line=line,
+                way=way, stops=route,
+                timestamp=datetime.now()
+            )
+
+            await asyncio.sleep(PERIOD)
 
 
 def main():
@@ -94,10 +110,11 @@ def main():
     # we only need line numbers and we don't want Noctis
     lines = [line.id for line in network.lines if 'N' not in str(line.id)]
     routes = [(line, 1) for line in lines] + [(line, 2) for line in lines]
-    routes = routes
+
+    semaphore = asyncio.Semaphore(CONCURRENCY)
 
     for line, way in routes:
-        asyncio.async(save_route(line, way))
+        asyncio.async(save_route(line, way, semaphore))
 
     loop.run_forever()
 
