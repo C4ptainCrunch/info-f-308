@@ -1,13 +1,15 @@
-from playhouse.postgres_ext import *
+import peewee
+import peewee_async
+from playhouse.postgres_ext import ArrayField
 
-db = PostgresqlExtDatabase('delay', register_hstore=False)
+db = peewee_async.PostgresqlDatabase('delay')
 
 
-class Heading(Model):
-    line = CharField()
-    way = IntegerField()
-    stops = ArrayField(field_class=BooleanField)
-    timestamp = DateTimeField()
+class Heading(peewee.Model):
+    line = peewee.CharField()
+    way = peewee.IntegerField()
+    stops = ArrayField(field_class=peewee.BooleanField)
+    timestamp = peewee.DateTimeField()
 
     class Meta:
         database = db
