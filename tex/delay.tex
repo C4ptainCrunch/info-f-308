@@ -14,6 +14,7 @@ nimarcha@ulb.ac.be}
 \maketitle
 
 \begin{abstract}
+\textit{Je n'ai pas encore écrit d'abstract, voici donc du latin pour remplir.}
 Lorem ipsum dolor sit amet, consectetur adipiscing elit.
 Aenean purus tellus, fringilla id orci nec, molestie dignissim neque.
 Sed luctus vitae ante non condimentum. Pellentesque sollicitudin mi aliquam, euismod est at, cursus erat.
@@ -30,8 +31,8 @@ Le but de ce projet est de prédire, en temps réel, l'heure d'arrivée aux arr�
 Dans le cadre de ce travail, la prédiction sera effectuée pour des lignes de bus,
 tram et métro de la STIB\footnote{Société de transports en commun à Bruxelles (Belgique)}.
 
-Un réseau de transport en commun étant très difficile à modéliser de par sa complexité et son influençabilité à des événements stochastiques,
-l'approche qui sera utilisée ici sera non pas de modéliser le réseau pour prédire son état futur mais plutôt d'extrapoler la suite des trajets grâce à des données historiques récoltées au préalable.
+Un réseau de transport en commun étant très difficile à modéliser à cause de sa complexité et par ce qu'il est très influencable par des événements stochastiques,
+l'approche qui sera utilisée ici sera non pas de modéliser le réseau pour prédire son état futur mais plutôt d'extrapoler les trajets des ses véhicules grâce à des données historiques récoltées au préalable.
 
 \section{Métriques de performance}
 
@@ -43,11 +44,13 @@ La littérature utilise souvent le RMSE\footnote{Root Mean Squared Error}: l'err
 Cependant, cette métrique souffre d'un problème :
 qu'un bus soit annoncé une minute à l'avance ou une minute en retard compte de la même manière alors que dans un cas l'usager attend son bus une minute de plus et que dans l'autre il le rate.
 
+\textit{J'ajouterai ici une métrique qui résoud ce problème.}
+
 \section{Algorithmes des prédiction}
 Plusieurs algorithmes seront implémentés et leur performances seront comparées.
 
 \subsection{Méthodes naïves}
-Deux méthodes fort naïves seront implémentées pour servir de base aux comparaisons faites par la suite.
+Deux méthodes assez naïves seront implémentées pour servir de base pour comparer les méthodes proposées par la suite.
 La première, la plus simple, est de prédire tout le temps la même durée de trajet entre deux arrêts en utilisant simplement la durée spécifiée dans les horaires statiques.
 
 La seconde, celle utilisée par la STIB, est de prédire le temps de trajet entre deux arrêts comme étant la moyenne des temps de trajets des trois derniers véhicules de la ligne étant passés sur ce tronçon.
@@ -62,14 +65,14 @@ Pour cela, on projette chaque trajet dans un espace à $n$ dimensions avec $n+1$
 
 Les trajets sont donc représentés par le vecteur colonne
 $T_{\alpha} = \begin{pmatrix}d_{1,\beta}, d_{2,\beta}, ..., d_{n,\beta}\end{pmatrix}^{T}$
-avec $d_{i,\beta}$ étant le temps de trajet entre l'arrêt $i$ et $i+1$ pour le trajet $\beta$.
+avec $d_{i,\beta}$ étant la durée du trajet entre l'arrêt $i$ et $i+1$ pour le véhicule $\beta$.
 La similarité $s_{\alpha,\beta}$ entre deux trajets $\alpha$ et $\beta$ est définie comme la distance Euclidienne entre deux vecteurs :
 
 \begin{eqnarray}
 s_{\alpha,\beta} = \sqrt{\sum_{j=0}^{n}(d_{j,\alpha} - d_{j,\beta})^2}
 \end{eqnarray}
 
-La prédiction du temps de trajet $\hat{d}_{n+1,\alpha}$ est donnée par la moyenne des temps de trajet pour ces arrêts des $k$ plus proches voisins de $\alpha$ :
+La prédiction du temps de trajet $\hat{d}_{n+1,\alpha}$ est donnée par la moyenne des temps de trajet pour ces arrêts des $k$ plus proches voisins de $\alpha$ dans l'espace.
 
 \begin{eqnarray}
 \hat{d}_{n+1,\alpha} = \frac{1}{k} \sum_{j=0}^{k}d_{n+1,k}
@@ -78,10 +81,14 @@ La prédiction du temps de trajet $\hat{d}_{n+1,\alpha}$ est donnée par la moye
 \subsubsection{Pondération :}
 Il serait peut-être appréciable que les performances récentes d'un véhicule influencent plus la prédiction que ses performances plus anciennes. Pour cela, on peut introduire la notion d'une distance pondérée dans laquelle certaines dimensions subiraient un homothétie pour en augmenter au diminuer le poids.
 
+\textit{J'ajouterai ici la définition de cette distance}
+
 \subsubsection{Prise en compte d'autres critères que le temps de trajet :}
 Il pourrait être utile de prendre en compte d'autres critères que le temps de trajet pour déterminer la similitude entre deux trajets.
 Le jour de la semaine, la météo ou même l'heure sont des facteurs influençant le temps de trajet.
 L'heure étant une variable continue, nous pouvons simplement l'ajouter au vecteur $T_{\alpha}$ et utiliser ce vecteur de $n+1$ éléments pour la distance euclidienne. Pour ce qui est du jour de la semaine ou de la météo, ce sont des variable discrètes pour lesquelles il faudra définir une nouvelle fonction de distance.
+
+\textit{Il faut encore que je fasse des recherches sur les k-NN avec variables discrètes si je m'aventure dans cette direction là.}
 
 \footnotesize
 \bibliographystyle{apalike}
