@@ -11,10 +11,11 @@ from models import peewee_async as pa
 class StibApiError(Exception):
     pass
 
+
 async def _route_data(line, way):
     URL = 'http://m.stib.be/api/getitinerary.php?line={}&iti={}'
 
-    if way not in (1,2):
+    if way not in (1, 2):
         raise ValueError("way must be an integer of value 1 or 2")
     line = str(line)
     if len(line) > 3:
@@ -26,6 +27,7 @@ async def _route_data(line, way):
         if response.status != 200:
             raise StibApiError("HTTP Error :", response.status)
         return await response.read()
+
 
 async def route_status(line, way, timeout=10):
     xml = await asyncio.wait_for(_route_data(line, way), timeout)
@@ -80,28 +82,32 @@ async def save_route(line, way):
     )
 
 
-async def main():
-    network = Network()
-    # we only need line numbers
-    lines = [line.id for line in network.lines]
-    # remove all Noctis
-    lines = filter(lambda x: 'N' not in str(x), lines)
-
-    routes = list(
-        zip(lines, [1] * len(lines))
-    ) + list(
-        zip(lines, [2] * len(lines))
-    )
-
-    await db.connect_async(loop=loop)
-
+async def route_loop(line, way):
     while True:
-        for line, way in routes:
-            await save_route(line, way)
+        start = datetime.now()
+        await save_route(line, way)
+        stop = datetime.now()
 
-        await asyncio.sleep(20)
+        duration = stop - start
+        print((line, way), duration, datetime.now(w))
+        wait = 20 - duration.total_seconds()
+        if wait > 0:
+            await asyncio.sleep(wait)
+
+
+def main():
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(db.connect_async())
+
+    network = Network()
+    # we only need line numbers and we don't want Noctis
+    lines = [line.id for line in network.lines if 'N' not in str(line.id)]
+    routes = [(line, 1) for line in lines] + [(line, 2) for line in lines]
+    routes = routes[:5]
+
+    for line, way in routes:
+        route_loop(line, way)
 
 
 if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    raw_html = loop.run_until_complete(main())
+    main()
