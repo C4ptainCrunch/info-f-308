@@ -83,21 +83,22 @@ async def save_route(line, way):
 
 
 async def route_loop(line, way):
+    loop = asyncio.get_event_loop()
     while True:
-        start = datetime.now()
+        start = loop.time()
         await save_route(line, way)
-        stop = datetime.now()
+        stop = loop.time()
 
         duration = stop - start
-        print((line, way), duration, datetime.now(w))
-        wait = 20 - duration.total_seconds()
+        print((line, way), round(duration * 1000), 'ms', datetime.now())
+        wait = 20 - duration
         if wait > 0:
             await asyncio.sleep(wait)
 
 
 def main():
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(db.connect_async())
+    loop.run_until_complete(db.connect_async(loop=loop))
 
     network = Network()
     # we only need line numbers and we don't want Noctis
@@ -106,7 +107,9 @@ def main():
     routes = routes[:5]
 
     for line, way in routes:
-        route_loop(line, way)
+        asyncio.async(route_loop(line, way))
+
+    loop.run_forever()
 
 
 if __name__ == '__main__':
