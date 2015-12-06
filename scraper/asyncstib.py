@@ -4,6 +4,7 @@ from xml.etree import ElementTree
 from datetime import datetime
 import time
 import random
+import logging
 
 from stib.stib import Network
 from models import Heading, db
@@ -12,10 +13,24 @@ import peewee_async as pa
 PERIOD = 30
 FAIL_WAIT_TIME = 2
 CONCURRENCY = 10
+HEADERS = {'user-agent': "Python/3.5 aiohttp/0.19.0 - nimarcha@ulb.ac.be"}
 
+logger = logging.getLogger('asyncstib')
 
 class StibApiError(Exception):
     pass
+
+
+def catcher(fn):
+    async def inner(*args, **kwargs):
+        try:
+            return await fn(*args, **kwargs)
+        except StibApiError as e:
+            logger.error("Stib error", exc_info=e)
+        except Exception as e:
+            logger.error("Coroutine %s failed with %s", fn, e, exc_info=e)
+            return None
+    return inner
 
 
 async def route_data(line, way):
@@ -29,7 +44,7 @@ async def route_data(line, way):
 
     url = URL.format(line, way)
 
-    async with aiohttp.get(url) as response:
+    async with aiohttp.get(url, headers=HEADERS) as response:
         if response.status != 200:
             raise StibApiError("HTTP Error :", response.status)
         return await response.read()
@@ -77,29 +92,30 @@ async def route_status(line, way, timeout=10):
     return output
 
 
+@catcher
 async def save_route(line, way, semaphore):
-    # wait between 0 and 10 seconds
-    await asyncio.sleep(random.random() * PERIOD)
+    # limit the number of coroutines
+    # in this block
+    async with semaphore:
+        route = await route_status(line, way)
 
+    logger.error('Store line %s,%s', line, way)
+    await pa.create_object(
+        Heading, line=line,
+        way=way, stops=route,
+        timestamp=datetime.now()
+    )
+
+
+
+async def route_loop(sleep, line, way, semaphore):
+    # distribute evenly the load
+    await asyncio.sleep(sleep)
+
+    logger.error('Starting loop for line %s,%s', line, way)
     while True:
-        try:
-            # limit the number of coroutines
-            # in this block
-            async with semaphore:
-                route = await route_status(line, way)
-
-        except StibApiError as e:
-            await asyncio.sleep(PERIOD)
-            print(e, (line, way))
-
-        else:
-            await pa.create_object(
-                Heading, line=line,
-                way=way, stops=route,
-                timestamp=datetime.now()
-            )
-
-            await asyncio.sleep(PERIOD)
+        asyncio.ensure_future(save_route(line, way, semaphore))
+        await asyncio.sleep(PERIOD)
 
 
 def main():
@@ -110,13 +126,18 @@ def main():
     # we only need line numbers and we don't want Noctis
     lines = [line.id for line in network.lines if 'N' not in str(line.id)]
     routes = [(line, 1) for line in lines] + [(line, 2) for line in lines]
+    # routes = routes[:2]
 
     semaphore = asyncio.Semaphore(CONCURRENCY)
 
-    for line, way in routes:
-        asyncio.async(save_route(line, way, semaphore))
+    for i, (line, way) in enumerate(routes):
+        sleep = i * PERIOD / len(routes)
+        asyncio.async(route_loop(sleep, line, way, semaphore))
 
-    loop.run_forever()
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt:
+        logger.error('KeyboardInterrupt')
 
 
 if __name__ == '__main__':
