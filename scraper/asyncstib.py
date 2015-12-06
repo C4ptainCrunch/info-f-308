@@ -10,8 +10,7 @@ from stib.stib import Network
 from models import Heading, db
 import peewee_async as pa
 
-PERIOD = 30
-FAIL_WAIT_TIME = 2
+PERIOD = 20
 CONCURRENCY = 10
 HEADERS = {'user-agent': "Python/3.5 aiohttp/0.19.0 - nimarcha@ulb.ac.be"}
 
