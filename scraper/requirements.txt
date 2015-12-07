@@ -1,4 +1,7 @@
+aiohttp
+aiopg
 beautifulsoup4
-requests
 peewee
+peewee-async
+requests
 psycopg2
