@@ -25,9 +25,9 @@ def catcher(fn):
         try:
             return await fn(*args, **kwargs)
         except StibApiError as e:
-            logger.error("Stib error", exc_info=e)
+            logger.warning("Stib error", exc_info=e)
         except Exception as e:
-            logger.error("Coroutine %s failed with %s", fn, e, exc_info=e)
+            logger.error("Coroutine %s(%s,%s) raised %s", fn, args[1], args[2], e, exc_info=e)
             return None
     return inner
 
@@ -81,12 +81,15 @@ async def route_status(line, way, timeout=10):
                 break
         output.append(has_vehicle)
 
-    if output.count(True) > (len(output) / 2):
+    vehicule_count = output.count(True)
+    if vehicule_count > (2 * len(output) / 3):
         raise StibApiError(
             "There is too much vehiclues on the line :",
-            output.count(True), "for",
+            vehicule_count, "for",
             len(output), "stops."
         )
+    if vehicule_count > (len(output) / 2):
+        logger.info("Line %s,%s has %i vehicules for %i stops", line, way, vehicule_count, len(output))
 
     return output
 
@@ -98,7 +101,7 @@ async def save_route(line, way, semaphore):
     async with semaphore:
         route = await route_status(line, way)
 
-    logger.error('Store line %s,%s', line, way)
+    logger.debug('Store line %s,%s', line, way)
     await pa.create_object(
         Heading, line=line,
         way=way, stops=route,
@@ -111,16 +114,21 @@ async def route_loop(sleep, line, way, semaphore):
     # distribute evenly the load
     await asyncio.sleep(sleep)
 
-    logger.error('Starting loop for line %s,%s', line, way)
+    logger.debug('Starting loop for line %s,%s', line, way)
+
     while True:
         asyncio.ensure_future(save_route(line, way, semaphore))
         await asyncio.sleep(PERIOD)
 
 
 def main():
+    logger.info("Starting asyncstib")
+
     loop = asyncio.get_event_loop()
     loop.run_until_complete(db.connect_async(loop=loop))
+    logger.debug("Postgres connection ok")
 
+    logger.debug("Gathering network info")
     network = Network()
     # we only need line numbers and we don't want Noctis
     lines = [line.id for line in network.lines if 'N' not in str(line.id)]
@@ -129,14 +137,16 @@ def main():
 
     semaphore = asyncio.Semaphore(CONCURRENCY)
 
+    logger.debug("Adding %i tasks (lines)", len(routes))
     for i, (line, way) in enumerate(routes):
         sleep = i * PERIOD / len(routes)
         asyncio.async(route_loop(sleep, line, way, semaphore))
 
+    logger.info("Starting main loop")
     try:
         loop.run_forever()
     except KeyboardInterrupt:
-        logger.error('KeyboardInterrupt')
+        logger.info('KeyboardInterrupt')
 
 
 if __name__ == '__main__':
