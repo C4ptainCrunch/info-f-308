@@ -5,6 +5,7 @@ from datetime import datetime
 import time
 import random
 import logging
+from logging.handlers import RotatingFileHandler
 
 from stib.stib import Network
 from models import Heading, db
@@ -15,6 +16,16 @@ CONCURRENCY = 10
 HEADERS = {'user-agent': "Python/3.5 aiohttp/0.19.0 - nimarcha@ulb.ac.be"}
 
 logger = logging.getLogger('asyncstib')
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s :: %(levelname)s :: %(message)s')
+file_handler = RotatingFileHandler('asyncstib.log', 'a', 1000000, 1)
+file_handler.setLevel(logging.INFO)
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+
+steam_handler = logging.StreamHandler()
+steam_handler.setLevel(logging.DEBUG)
+logger.addHandler(steam_handler)
 
 class StibApiError(Exception):
     pass
@@ -137,7 +148,7 @@ def main():
 
     semaphore = asyncio.Semaphore(CONCURRENCY)
 
-    logger.debug("Adding %i tasks (lines)", len(routes))
+    logger.info("Adding %i tasks (lines)", len(routes))
     for i, (line, way) in enumerate(routes):
         sleep = i * PERIOD / len(routes)
         asyncio.async(route_loop(sleep, line, way, semaphore))
@@ -146,7 +157,7 @@ def main():
     try:
         loop.run_forever()
     except KeyboardInterrupt:
-        logger.info('KeyboardInterrupt')
+        logger.warning('KeyboardInterrupt')
 
 
 if __name__ == '__main__':
