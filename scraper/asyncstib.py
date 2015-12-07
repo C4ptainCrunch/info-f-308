@@ -60,7 +60,7 @@ async def route_data(line, way):
         return await response.read()
 
 
-async def route_status(line, way, timeout=10):
+async def route_status(line, way, timeout=5):
     try:
         xml = await asyncio.wait_for(route_data(line, way), timeout)
     except asyncio.TimeoutError as e:
