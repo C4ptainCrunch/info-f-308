@@ -165,10 +165,12 @@ def save_day(arg):
     trajects = map(reduce_traject, trajects)
 
     timestamps = (traject_to_timestamps(t, dates) for t in trajects)
-    models = (timestamps_to_model(t, line, way) for t in timestamps)
+    models = [timestamps_to_model(t, line, way) for t in timestamps]
 
-    with db.atomic():
-        Traject.insert_many(models).execute()
+    if len(models) > 0:
+        with db.atomic():
+            Traject.insert_many(models).execute()
+
 
 if __name__ == '__main__':
     print("Merging lines...")
@@ -178,14 +180,16 @@ if __name__ == '__main__':
     from multiprocessing import Pool
 
     p = Pool(4)
+    LINES = [1,2,3,4,5,6,7,94,25]
     routes = [(line, 1) for line in LINES] + [(line, 2) for line in LINES]
-    routes = [(71, 2)]
     for line, way in routes:
+        print("Line", line, "way", way)
         dates, positions = get_data_from_db(line, way)
         iterable = zip(dates, positions)
 
         groups = [(list(v), line, way) for k, v in groupby(iterable, lambda x: x[0].date())]
-        p.map(save_day, groups)
+        p.map_async(save_day, groups)
 
+    print("Waiting to close")
     p.close()
 
