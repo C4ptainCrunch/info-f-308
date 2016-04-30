@@ -7,7 +7,6 @@ import random
 import logging
 from logging.handlers import RotatingFileHandler
 
-from stib.stib import Network
 from models import Heading, db
 import peewee_async as pa
 
@@ -36,7 +35,7 @@ def catcher(fn):
         try:
             return await fn(*args, **kwargs)
         except StibApiError as e:
-            logger.warning("Stib error", exc_info=e)
+            logger.warning("Stib error: " + str(e))
         except Exception as e:
             logger.error("Coroutine %s(%s,%s) raised %s", fn, args[1], args[2], e, exc_info=e)
             return None
@@ -99,7 +98,7 @@ async def route_status(line, way, timeout=5):
             vehicule_count, "for",
             len(output), "stops."
         )
-    if vehicule_count > (len(output) / 2):
+    if vehicule_count > (len(output) * 2 / 3):
         logger.info("Line %s,%s has %i vehicules for %i stops", line, way, vehicule_count, len(output))
 
     return output
@@ -139,12 +138,9 @@ def main():
     loop.run_until_complete(db.connect_async(loop=loop))
     logger.debug("Postgres connection ok")
 
-    logger.debug("Gathering network info")
-    network = Network()
-    # we only need line numbers and we don't want Noctis
-    lines = [line.id for line in network.lines if 'N' not in str(line.id)]
+
+    lines = [1, 2, 3, 4, 5, 6, 7, 12, 13, 14, 15, 17, 19, 20, 21, 22, 25, 27, 28, 29, 32, 34, 36, 38, 39, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 53, 54, 55, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 69, 71, 72, 75, 76, 77, 78, 79, 80, 81, 82, 84, 86, 87, 88, 89, 92, 93, 94, 95, 97, 98]
     routes = [(line, 1) for line in lines] + [(line, 2) for line in lines]
-    # routes = routes[:2]
 
     semaphore = asyncio.Semaphore(CONCURRENCY)
 
