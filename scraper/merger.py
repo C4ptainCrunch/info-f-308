@@ -135,3 +135,57 @@ def time_per_stop(traject):
             ret[stop] = round(delta.total_seconds())
 
     return ret
+
+
+###############################
+## Main
+###############################
+
+def traject_to_timestamps(traject, dates):
+    timestamps = [None] * (max(traject, key=lambda x: x[1])[1] + 1)
+    for when, stop in traject:
+        timestamps[stop] = dates[when]
+
+    return timestamps
+
+def timestamps_to_model(timestamps, line, way):
+    return {
+        'line' : line,
+        'way' : way,
+        'stops_times' : timestamps,
+        'start_time' : min((i for i in timestamps if i is not None))
+    }
+
+def save_day(arg):
+    row_list, line, way = arg
+    dates, positions = zip(*row_list)
+
+    trajects = trajects_from_bool(positions)
+    trajects = map(skip_terminus, trajects)
+    trajects = map(reduce_traject, trajects)
+
+    timestamps = (traject_to_timestamps(t, dates) for t in trajects)
+    models = (timestamps_to_model(t, line, way) for t in timestamps)
+
+    with db.atomic():
+        Traject.insert_many(models).execute()
+
+if __name__ == '__main__':
+    print("Merging lines...")
+    from constants import LINES
+    from itertools import groupby
+    from models import db, Traject
+    from multiprocessing import Pool
+
+    p = Pool(4)
+    routes = [(line, 1) for line in LINES] + [(line, 2) for line in LINES]
+    routes = [(71, 2)]
+    for line, way in routes:
+        dates, positions = get_data_from_db(line, way)
+        iterable = zip(dates, positions)
+
+        groups = [(list(v), line, way) for k, v in groupby(iterable, lambda x: x[0].date())]
+        p.map(save_day, groups)
+
+    p.close()
+

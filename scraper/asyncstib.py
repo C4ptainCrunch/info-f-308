@@ -10,6 +10,8 @@ from logging.handlers import RotatingFileHandler
 from models import Heading, db
 import peewee_async as pa
 
+from constants import LINES
+
 PERIOD = 20
 CONCURRENCY = 10
 HEADERS = {'user-agent': "Python/3.5 aiohttp/0.19.0 - nimarcha@ulb.ac.be"}
@@ -139,10 +141,7 @@ def main():
     logger.debug("Postgres connection ok")
 
 
-    lines = [1, 2, 3, 4, 5, 6, 7, 12, 13, 14, 15, 17, 19, 20, 21, 22, 25,
-    27, 28, 29, 32, 34, 36, 38, 39, 41, 42, 43, 44, 45, 46, 47, 48, 49,
-    50, 51, 53, 54, 55, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 69, 71,
-    72, 75, 76, 77, 78, 79, 80, 81, 82, 84, 86, 87, 88, 89, 92, 93, 94, 95, 97, 98]
+    lines = LINES
 
     routes = [(line, 1) for line in lines] + [(line, 2) for line in lines]
 
