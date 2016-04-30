@@ -3,7 +3,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
 
-\title{Estimation en temps réel des retards dans un réseau\\ de bus à l'aide de données historiques}
+\title{Estimation en temps réel des temps de trajet dans un réseau\\ de bus à l'aide de données historiques}
 \author{Nikita Marchant$^{1}$\\
 \mbox{}\\
 $^1$Université Libre de Bruxelles, Département d'Informatique\\
@@ -14,15 +14,7 @@ nimarcha@ulb.ac.be}
 \maketitle
 
 \begin{abstract}
-\textit{Je n'ai pas encore écrit d'abstract, voici donc du latin pour remplir.}
-Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-Aenean purus tellus, fringilla id orci nec, molestie dignissim neque.
-Sed luctus vitae ante non condimentum. Pellentesque sollicitudin mi aliquam, euismod est at, cursus erat.
-Nulla porttitor enim tellus, sed aliquam nisl facilisis quis.
-Proin at odio convallis leo mattis vehicula. Nam ac suscipit lectus.
-Nullam tincidunt lobortis tincidunt. Praesent sodales leo ut quam mollis sodales.
-Aliquam non mauris ex. Donec sed elementum elit, pellentesque dapibus arcu.
-Cras convallis venenatis bibendum.
+
 \end{abstract}
 
 \section{Introduction}
@@ -32,7 +24,7 @@ Dans le cadre de ce travail, la prédiction sera effectuée pour des lignes de b
 tram et métro de la STIB\footnote{Société de transports en commun à Bruxelles (Belgique)}.
 
 Un réseau de transport en commun étant très difficile à modéliser à cause de sa complexité et par ce qu'il est très influencable par des événements stochastiques,
-l'approche qui sera utilisée ici sera non pas de modéliser le réseau pour prédire son état futur mais plutôt d'extrapoler les trajets des ses véhicules grâce à des données historiques récoltées au préalable.
+l'approche qui sera utilisée ici sera non pas de modéliser le réseau pour prédire son état futur mais d'extrapoler les trajets des ses véhicules grâce à des données historiques récoltées au préalable.
 
 \section{Métriques de performance}
 
@@ -89,6 +81,31 @@ Le jour de la semaine, la météo ou même l'heure sont des facteurs influençan
 L'heure étant une variable continue, nous pouvons simplement l'ajouter au vecteur $T_{\alpha}$ et utiliser ce vecteur de $n+1$ éléments pour la distance euclidienne. Pour ce qui est du jour de la semaine ou de la météo, ce sont des variable discrètes pour lesquelles il faudra définir une nouvelle fonction de distance.
 
 \textit{Il faut encore que je fasse des recherches sur les k-NN avec variables discrètes si je m'aventure dans cette direction là.}
+
+
+\section{Ensemble d'apprentissage}
+
+Pour constituer l'ensemble d'apprentissage, il a fallu enregistrer la position de l'ensemble des véhicules du réseau de la STIB toutes les 20 secondes pendant plusieurs mois ce qui resprésente approximativement un demi million de  mesures par ligne et par sens.
+
+Ces données ont une faible résolution temporelle (20 secondes) et spatiale (la position des véhicules est connue à un arrêt près) et sont parfois de mauvaise qualité (certains véhicules disparaissent pendant quelques minutes pour ré-apparaitre plus loin par exemple). De plus, il n'a pas été possible de récupérer un identifiant en plus de la position pour les véhicules ce qui rend l'identification de trajets non trivialle.
+
+Il a donc fallu traiter ces données avant de pouvoir les utiliser pour effectuer des prédictions.
+\textit{Explication rapide de la méthode} % TODO
+
+Une fois ce traitement effectué, il reste un dernier détail à prendre en compte : les trajets extraits ne commencent ou ne finissent pas tous au terminus (soit parce que le véhicule n'as pas été jusqu'au bout ou à cause d'erreurs commises lors de l'extraction des trajets depuis les positions).
+
+Les méthodes présentées ci-dessus ne fonctionnant pas avec des vecteurs contenant des éléments non définis, il y avait deux possibilités : soit ignorer les vecteurs incomplets soit extrapoler les valeurs manquantes.
+
+La première méthode a été écartée car elle diminuait fortement la taille de l'ensemble d'apprentissage, la seconde a été privilégiée. Si le $i$ème élément d'un vecteur est manquant, il est remplacé par la moyenne des $i$èmes éléments des vecteurs dont la valeur est définie.
+
+
+\section{Améliorations possibles}
+
+\begin{itemize}
+    \item Distance entre variables discrètes
+    \item Meilleure imputation des valeurs manquantes
+\end{itemize}
+
 
 \footnotesize
 \bibliographystyle{apalike}

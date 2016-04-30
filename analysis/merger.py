@@ -18,8 +18,8 @@ def get_data_from_db(line, way):
     return dates, positions
 
 
-V_TRESHOLD = 6
-H_TRESHOLD = 4
+V_TRESHOLD = 7
+H_TRESHOLD = 5
 
 def assign_id_to_row(aligned, row, max_id=0):
     identified_row = np.zeros_like(row, dtype=np.int64)
@@ -35,13 +35,14 @@ def assign_id_to_row(aligned, row, max_id=0):
             for j in range(i, max(i - H_TRESHOLD, -1), -1):
                 if identified_row[i]:
                     break
+                # top to bottom
                 for k in range(max(aligned.shape[0] - V_TRESHOLD, 0), aligned.shape[0]):
-                    if row[j]:
-                        # algo avancé
-                        pass
+
+                # bottom to top
+                #for k in range(aligned.shape[0] - 1, max(aligned.shape[0] - V_TRESHOLD, -1), -1):
                     current_cell = aligned[k][j]
                     if (current_cell != 0
-                        and current_cell not in aligned[k+1:, j+1:]
+                        and current_cell not in aligned[k+1:]
                         and  current_cell not in identified_row
                        ):
                         identified_row[i] = current_cell
