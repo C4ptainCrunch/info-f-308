@@ -2,14 +2,19 @@
 \usepackage{natbib,alifexi}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
+\usepackage[toc,page]{appendix}
+\usepackage[frenchb]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{placeins}
 
-\title{Estimation en temps réel des temps de trajet dans un réseau\\ de bus à l'aide de données historiques}
+\title{Prédiction des temps de trajet dans un réseau\\ de bus à l'aide de données historiques}
 \author{Nikita Marchant$^{1}$\\
-\mbox{}\\
+Superviseurs : Martine Labbé, Samuel Deleplanque
+\mbox{}\\\\
 $^1$Université Libre de Bruxelles, Département d'Informatique\\
 nimarcha@ulb.ac.be}
 
-
+\setlength{\parskip}{0.5em}
 \begin{document}
 \maketitle
 
@@ -19,97 +24,236 @@ nimarcha@ulb.ac.be}
 
 \section{Introduction}
 
-Le but de ce projet est de prédire, en temps réel, l'heure d'arrivée aux arrêts d'un véhicule de transport en commun.
+Le but de ce projet est de pouvoir prédire, en temps réel, l'heure d'arrivée d'un véhicule de transport en commun aux arrêts de son trajet.
 Dans le cadre de ce travail, la prédiction sera effectuée pour des lignes de bus,
 tram et métro de la STIB\footnote{Société de transports en commun à Bruxelles (Belgique)}.
 
-Un réseau de transport en commun étant très difficile à modéliser à cause de sa complexité et par ce qu'il est très influencable par des événements stochastiques,
-l'approche qui sera utilisée ici sera non pas de modéliser le réseau pour prédire son état futur mais d'extrapoler les trajets des ses véhicules grâce à des données historiques récoltées au préalable.
+Un réseau de transport en commun étant très difficile à modéliser à cause de sa complexité et par ce qu'il est très influençable par des événements stochastiques,
+l'approche qui sera utilisée ici sera non pas de modéliser le réseau pour prédire son état futur mais d'extrapoler grâce à des algorithmes de machine learning les trajets des véhicules grâce à des données historiques récoltées au préalable.
 
-\section{Métriques de performance}
+% \section{État de l'art}
 
-Pour pouvoir comparer plusieurs méthodes,
-il est important d'avoir des métriques bien définies mesurant la performance de celles-ci.
 
-La littérature utilise souvent le RMSE\footnote{Root Mean Squared Error}: l'erreur quadratique moyenne.
+% \subsection{Méthodes naïves}
 
-Cependant, cette métrique souffre d'un problème :
-qu'un bus soit annoncé une minute à l'avance ou une minute en retard compte de la même manière alors que dans un cas l'usager attend son bus une minute de plus et que dans l'autre il le rate.
+% On time, avg time, avg speed
 
-\textit{J'ajouterai ici une métrique qui résoud ce problème.}
+% La première, la plus simple, est de prédire tout le temps la même durée de trajet entre deux arrêts en utilisant simplement la durée spécifiée dans les horaires statiques.
 
-\section{Algorithmes des prédiction}
-Plusieurs algorithmes seront implémentés et leur performances seront comparées.
+% La seconde, celle utilisée par la STIB, est de prédire le temps de trajet entre deux arrêts comme étant la moyenne des temps de trajets des trois derniers véhicules de la ligne étant passés sur ce tronçon.
 
-\subsection{Méthodes naïves}
-Deux méthodes assez naïves seront implémentées pour servir de base pour comparer les méthodes proposées par la suite.
-La première, la plus simple, est de prédire tout le temps la même durée de trajet entre deux arrêts en utilisant simplement la durée spécifiée dans les horaires statiques.
+% \subsection{Kalmann}
+% \subsection{SVM}
 
-La seconde, celle utilisée par la STIB, est de prédire le temps de trajet entre deux arrêts comme étant la moyenne des temps de trajets des trois derniers véhicules de la ligne étant passés sur ce tronçon.
+% \subsection{ANN}
 
-\subsection{$k$ plus proches voisins}
+% subsection KNN
 
-L'algorithme des $k$ plus proches voisins\footnote{$k$-nearest neighbors ou encore $k$-NN. (\cite{trevor2009elements})}
-est une méthode d'intelligence artificielle qui peut être utilisée aussi bien pour de la classification que pour de la régression.
-L'idée de cette méthode est de trouver les $k$ trajets les plus similaires à la cible et de les utiliser pour extrapoler le temps de trajet futur.
+\section{Méthode développée}
 
-Pour cela, on projette chaque trajet dans un espace à $n$ dimensions avec $n+1$ étant le nombre d'arrêts déjà effectués par le véhicule dont on cherche à prédire le temps de trajet (ce véhicule sera appelé $\alpha$).
+La méthode qui a été développée dans le cadre de ce travail est la méthode des $k$ plus proches voisins.
+
+% TODO pourquoi knn
+
+L'implémentation a été découpées en $n$ grandes parties : premièrement, la collection de données pour alimenter l'apprentissage du modèle, ensuite le traitement de ces données pour améliorer leur qualité et les transformer en un format utilisable par le modèle, l'étape suivante a été l'analyse et le choix de fonctions de score pour entraîner le modèle et pour finir, l’entraînement en lui même ainsi que l'analyse des résultats.
+
+\subsection{Collection des données}
+
+La STIB ne mettant pas à disposition ses données historiques, il a fallu commencer par récolter des informations grâce à un programme écrit pour l'occasion. Les deux seules sources de données sur l'état du réseau en temps réel disponibles sur internet sont : premièrement, pour chaque ligne, la position précise à un arrêt prêt de chaque véhicule et deuxièmement, pour chaque arrêt, une estimation du temps d'attente avant le prochain véhicule de chaque ligne.
+
+La source de données qui a été choisie est la première pour deux raisons : le réseau de la STIB disposant de milliers d'arrêts, il aurait été difficile de récolter avec une fréquence suffisante les temps d'attente pour chaque arrêt. De plus, les temps d'attentes étant eux mêmes des prédictions, il serait un peu illogique de les utiliser comme des mesures.
+
+La source choisie souffre tout de même d'un problème non-négligeable : les véhicules apparaissent sur la ligne comme de simples point non identifiés. Il n'est donc pas possible de récupérer le numéro du véhicule, sa plaque d'immatriculation ou tout autre identifiant unique. De plus, si deux véhicules d'une même ligne sont suffisamment proches, ils n'apparaissent plus que comme un seul point.
+
+Le processus de collection des données est un programme \textit{Python3} utilisant \texttt{aiohttp} pour permettre des requêtes http asynchrones au serveur web de la STIB et ainsi permettre une période d’échantillonnage de 20 secondes pour chaque ligne, dans chaque sens (ce qui fait 142 mesures toutes les 20 secondes dans l'état actuel du réseau). La période de 20 secondes a été choisie empiriquement car une fréquence plus élevée imposait une charge trop lourde au serveur de le STIB et une fréquence plus faible aurait été trop imprécise.
+
+Cette collection de données a permis l'enregistrement d'approximativement 80 millions de mesures en 6 mois,réparties sur l'ensemble des lignes.
+
+
+\subsection{Traitement des données}
+
+Les données récupérées grâce à la méthode décrite dans la section précédente sont malheureusement de mauvaise qualité : il est courant qu'un véhicule cesse d’émettre sa position pendant plusieurs minutes, que la source de donnée tombe en panne ou que les positions de deux véhicules fort proches soient confondues en un seul point.
+
+De plus, les mesures ne sont pas directement utilisables par l'algorithme que nous avons choisi. En effet, nous ne disposons que d'une suite de positions (les sorties de notre programme de mesure sont des vecteurs horodatés de booléens, voir annexes) et ce dont nous avons besoin est des durées que chaque véhicule a pris pour parcourir les distances entre deux arrêts consécutifs.
+
+Nous avons donc développé un algorithme qui assigne un identifiant à chaque nouveau point qui apparaît sur une ligne et qui essaye, dans la mesure du possible, de détecter lors des mesures suivantes si un point est déjà connu et qu'il s'est déplacé ou si c'est un nouveau point (par exemple un bus qui vient du dépôt).
+
+Grâce à ces identifiants, nous pouvons donc maintenant reconstituer des trajets (une suite de paires [position, instant]) pour ces véhicules en parcourant les mesures et en enregistrant la position de chaque identifiant dans la ligne à chaque instant.
+
+Dans l'optique de pouvoir proposer des prédictions en temps réel, l'algorithme supporte un mode dans lequel il a connaissance des trajets passés dont le véhicule n'est pas arrivé au terminus et qui permet de compléter ces trajets au fur et à mesure que de nouvelles mesures sont disponibles.
+
+L'algorithme, bien qu'ayant pris du temps à développer et à paramétrer ne présente pas de grand intérêt scientifique. Son fonctionnement est donc décrit en annexe.
+
+\subsection{Modèle d'apprentissage: les $k$ plus proches voisins}
+
+L'algorithme des $k$ plus proches voisins\footnote{$k$-nearest neighbors ou encore $k$-NN.}
+est une méthode d'intelligence artificielle qui peut être utilisée aussi bien pour de la classification que pour de la régression [\cite{trevor2009elements}].
+L'idée de cette méthode est de trouver les $k$ trajets les plus similaires à la cible et d'utiliser ceux-ci pour extrapoler le temps de trajet futur.
+
+Pour calculer la similarité entre deux trajets, nous devons extraire des \textit{features}, des grandeurs qui caractérisent ces trajets. Les features que nous utiliserons ici sont les temps que le véhicule a pris pour voyager entre deux arrêts. Un trajet n'est évidemment pas caractérisé uniquement par ces grandeurs mais nous verrons qu'en première approximation ces grandeurs sont déjà suffisantes \footnote{Une autre feature très intéressante et fort utilisée dans la littérature est la taux de remplissage du véhicule mais nous n'avons pas accès à cette donnée dans notre cas. D'autres features qui pourraient être intéressantes sont énumérées dans les perspectives, en fin d'article}.
+
+Pour cela, nous projetons chaque trajet dans un espace à $n$ dimensions avec $n+1$ étant le nombre d'arrêts déjà effectués par le véhicule dont on cherche à prédire le temps de trajet (ce véhicule sera appelé $\alpha$).
 
 Les trajets sont donc représentés par le vecteur colonne
 $T_{\alpha} = \begin{pmatrix}d_{1,\beta}, d_{2,\beta}, ..., d_{n,\beta}\end{pmatrix}^{T}$
 avec $d_{i,\beta}$ étant la durée du trajet entre l'arrêt $i$ et $i+1$ pour le véhicule $\beta$.
-La similarité $s_{\alpha,\beta}$ entre deux trajets $\alpha$ et $\beta$ est définie comme la distance Euclidienne entre deux vecteurs :
+
+Maintenant que nous avons transformé nos trajets en vecteurs, nous pouvons utiliser tous les trajets du passés (l'ensemble d'apprentissage) et les placer dans cet espace à $n$ dimensions pour entraîner notre algorithme.
+
+Une fois que l'algorithme est entraîné, nous pouvons faire une prédiction pour un nouveau trajet ($\hat{d}$) dont on ne connaît pas la fin. Pour cela, nous le plaçons aussi dans cet espace et nous mesurons sa similarité par rapport à tous les autres trajets de l'ensemble d'apprentissage.
+
+La similarité $s_{\alpha,\beta}$ (ou distance) entre deux trajets $\alpha$ et $\beta$ est définie comme la distance euclidienne entre deux vecteurs :
 
 \begin{eqnarray}
 s_{\alpha,\beta} = \sqrt{\sum_{j=0}^{n}(d_{j,\alpha} - d_{j,\beta})^2}
 \end{eqnarray}
 
-La prédiction du temps de trajet $\hat{d}_{n+1,\alpha}$ est donnée par la moyenne des temps de trajet pour ces arrêts des $k$ plus proches voisins de $\alpha$ dans l'espace.
+Nous sélectionnons ensuite les $k$ vecteurs dont la similarité est la plus proche de $\hat{d}$ et nous nommons cet ensemble $\mathcal{V}$ : les plus proches voisins.
+
+Dans la version originale de $k$NN, la prédiction du temps de trajet $\hat{d}_{n+1,\alpha}$ est ensuite donnée par la moyenne des temps de trajets pour les vecteur appartenant à $\mathcal{V}$.
 
 \begin{eqnarray}
-\hat{d}_{n+1,\alpha} = \frac{1}{k} \sum_{j=0}^{k}d_{n+1,k}
+\hat{d}_{n+1,\alpha} = \frac{1}{k} \sum_{i \in \mathcal{V}}d_{n+1,i}
 \end{eqnarray}
 
-\subsubsection{Pondération :}
-Il serait peut-être appréciable que les performances récentes d'un véhicule influencent plus la prédiction que ses performances plus anciennes. Pour cela, on peut introduire la notion d'une distance pondérée dans laquelle certaines dimensions subiraient un homothétie pour en augmenter au diminuer le poids.
+Il est aussi possible d'effectuer la régression à l'aide d'une moyenne pondérée. Chaque vecteur est pondéré par l'inverse de sa distance par rapport au vecteur cible :
 
-\textit{J'ajouterai ici la définition de cette distance}
+\begin{eqnarray}
+\hat{d}_{n+1,\alpha} = \sum_{i \in \mathcal{V}} s_{\alpha, i} \cdot \frac{1}{k} \sum_{i \in \mathcal{V}}( \frac{d_{n+1,i}}{s_{\alpha, i}})
+\end{eqnarray}
 
-\subsubsection{Prise en compte d'autres critères que le temps de trajet :}
-Il pourrait être utile de prendre en compte d'autres critères que le temps de trajet pour déterminer la similitude entre deux trajets.
-Le jour de la semaine, la météo ou même l'heure sont des facteurs influençant le temps de trajet.
-L'heure étant une variable continue, nous pouvons simplement l'ajouter au vecteur $T_{\alpha}$ et utiliser ce vecteur de $n+1$ éléments pour la distance euclidienne. Pour ce qui est du jour de la semaine ou de la météo, ce sont des variable discrètes pour lesquelles il faudra définir une nouvelle fonction de distance.
+La projection des trajets dans un espace à $n$ dimension ainsi que l'implémentation de l'algorithme des plus proches voisin ont dans un premier temps été écrits en \textit{Python3}, uniquement à l'aide de la librairie \texttt{numpy} pour faciliter les calculs vectoriels et un prototypage rapide. Dans un second temps, nous avons utilisé la librairie \texttt{scikit-learn} pour profiter de son implémentation optimisée de $k$NN.
 
-\textit{Il faut encore que je fasse des recherches sur les k-NN avec variables discrètes si je m'aventure dans cette direction là.}
+\section{Fonctions de score}
 
+Afin d'effectuer un bon choix de l'hyper-paramètre $k$ ainsi que de choisir entre la moyenne pondérée ou non, il est important de pouvoir comparer deux modèles entre eux. Pour cela, nous aurons aussi besoin d'assigner un score à une prédiction en fonction de sa performance par rapport à ce qu'il c'est vraiment passé.
 
-\section{Ensemble d'apprentissage}
+\subsection{Score d'une prédiction}
+Pour assigner un score à une prédiction, la littérature utilise souvent le RMSE\footnote{Root Mean Squared Error}: l'erreur quadratique moyenne.
+Cependant, cette métrique souffre d'un problème :
+qu'un bus soit annoncé une minute à l'avance ou une minute en retard est pondéré de la même manière alors que dans un cas l'usager attend son bus une minute de plus et que dans l'autre il le rate.
 
-Pour constituer l'ensemble d'apprentissage, il a fallu enregistrer la position de l'ensemble des véhicules du réseau de la STIB toutes les 20 secondes pendant plusieurs mois ce qui resprésente approximativement un demi million de  mesures par ligne et par sens.
-
-Ces données ont une faible résolution temporelle (20 secondes) et spatiale (la position des véhicules est connue à un arrêt près) et sont parfois de mauvaise qualité (certains véhicules disparaissent pendant quelques minutes pour ré-apparaitre plus loin par exemple). De plus, il n'a pas été possible de récupérer un identifiant en plus de la position pour les véhicules ce qui rend l'identification de trajets non trivialle.
-
-Il a donc fallu traiter ces données avant de pouvoir les utiliser pour effectuer des prédictions.
-\textit{Explication rapide de la méthode} % TODO
-
-Une fois ce traitement effectué, il reste un dernier détail à prendre en compte : les trajets extraits ne commencent ou ne finissent pas tous au terminus (soit parce que le véhicule n'as pas été jusqu'au bout ou à cause d'erreurs commises lors de l'extraction des trajets depuis les positions).
-
-Les méthodes présentées ci-dessus ne fonctionnant pas avec des vecteurs contenant des éléments non définis, il y avait deux possibilités : soit ignorer les vecteurs incomplets soit extrapoler les valeurs manquantes.
-
-La première méthode a été écartée car elle diminuait fortement la taille de l'ensemble d'apprentissage, la seconde a été privilégiée. Si le $i$ème élément d'un vecteur est manquant, il est remplacé par la moyenne des $i$èmes éléments des vecteurs dont la valeur est définie.
-
-
-\section{Améliorations possibles}
-
+Nous avons donc implémenté d'autres métriques qu'il nous semblait intéressant de pouvoir minimiser :
 \begin{itemize}
-    \item Distance entre variables discrètes
-    \item Meilleure imputation des valeurs manquantes
+    \item Le RMSE double négatif : chaque erreur négative (quand un bus est annoncé plus tard qu'en vrai) est doublée et en suite on applique le RMSE.
+    \item RMSE pondéré linéairement : l'erreur de prédiction pour l'arrêt suivant est pondéré avec un poids de 5, l'erreur pour le dernier arrêt est pondérée avec un poids de 1 et les arrêts entre les deux sont pondérés linéairement entre 1 et 5.
+    \item RMSE pondéré exponentiellement : l'erreur de prédiction pour le $n$ème arrêt est pondéré avec un poids de $\frac{1}{n}$
 \end{itemize}
+\vspace{1em}
 
+La première métrique résout (ou en tout cas diminue) le problème du bus raté et les deux suivantes prennent en compte le fait qu'il est plus intéressant de bien prédire le futur proche et un peu moins bien le futur lointain que de bien prédire l'entièreté du trajet.
+
+Avant de choisir la métrique que nous utiliserons comme fonction de score, nous avons décidé de les comparer.
+Pour cela, nous entraîné un $k$NN avec un $k$ fixé arbitrairement à 130 à l'aide de 12000 trajets de la ligne de bus 95 vers Grand-Place en utilisant les 10 premiers arrêts comme donnée connue et les 13 suivants comme donnée à prédire. Ensuite, nous avons effectué 6000 prédictions pour d'autres trajets de la même ligne et nous avons calculé leur score avec chaque métrique.
+
+\begin{figure}
+   \centerline{\includegraphics[width=8cm]{metrics.eps}}
+   \caption{\label{fig:rmse-vs-double}Comparaison entre le RMSE et le double négatif pour chacune des 6000 prédictions.}
+\end{figure}
+
+Nous avons ensuite comparé graphiquement deux à deux chacune des fonctions de score sur l'ensemble des 6000 prédictions. Nous pouvons en voir un exemple dans la figure~\ref{fig:rmse-vs-double} : chaque point représente une prédiction avec, en l’abscisse son score selon le RMSE et en ordonnée son score selon le RMSE double négatif. Des graphes pour toutes les autres comparaisons se trouvent en annexe.
+
+Cette première comparaison nous a déjà permis d'apercevoir une corrélation linéaire entre les différentes fonctions.
+En plus de cette corrélation déterminée visuellement, nous avons comparé la corrélation de rang entre les fonctions grâce au coefficient de corrélation de Spearman (ou $\rho$). Celui-ci nous donne un indice sur le fait que deux fonctions ordonnent un ensemble de la même manière\footnote{En effet, il nous importe peu que la corrélation soit linéaire ou même quadratique : tant qu'on peut classer les prédiction de la meilleure à la moins bonne et que ce classement ne change pas lors d'un changement de fonction de score, cela est suffisant pour nous.}. Celui-ci varie entre -1, quand l'ordre est parfaitement inversé à 1, quand l'ordre est identique.
+
+Sa formule est définie comme ceci, $d$ étant la différence entre le rang défini par la première fonction et celui défini par la seconde :
+
+\begin{eqnarray}
+\rho = 1 - \frac{6 \sum_{i=1}^{n} d^2_i}{n^3 - n}
+\end{eqnarray}
+
+\begin{table}[h]
+\begin{tabular}{|l|c|c|c|c|}
+  \hline
+  & RMSE & linéaire & exponentiel & double \\
+  \hline
+RMSE & 1.000 & 0.961 & 0.812 & 0.966 \\
+linéaire & 0.961 & 1.000 & 0.896 & 0.926 \\
+exponentiel & 0.812 & 0.896 & 1.000 & 0.793 \\
+double & 0.966 & 0.926 & 0.793 & 1.000 \\
+  \hline
+\end{tabular}
+  \caption{\label{tab:rho} Rho de Spearman entre chaque chaque paire de métrique de score.}
+\end{table}
+
+Le RMSE double négatif semblant être la métrique la plus intéressante à minimiser et le RMSE simple étant quasiment identique (voir table \ref{tab:rho} et figure \ref{fig:rmse-vs-double}), nous avons choisi d'utiliser par la suite le RMSE pour sa simplicité d'implémentation et sa rapidité (ce n'est que la norme du vecteur d'erreur, fonction qui est déjà implémentée rapidement dans \texttt{numpy})
+
+\FloatBarrier
+\subsection{Score d'une modèle}
+
+% Par la suite, nous aurons aussi besoin de comparer deux modèles entre eux et donc l'ensemble de leurs prédictions.
+% Pour cela, nous aurons donc aussi besoin d'une métrique de score, non plus pour une prédiction unique, mais pour l'ensemble des prédiction qu'un modèle à faites.
+% Ici le choix des fonctions de score ont été assez simples. Nous avons comparé la moyenne, la médiane ainsi que le maximum de l'ensemble des scores des prédictions du modèle.
+
+% \textit{Décrire le set de données qui a servi à faire cette comparaison}
+
+% Nous avons remarqué une corrélation assez forte, 0.822, entre la médiane et la moyenne ainsi qu'une non-corrélation totale entre le maximum et les deux autres (0.007 et 0.180).
+
+
+% \subsubsection{Pondération :}
+% Il serait peut-être appréciable que les performances récentes d'un véhicule influencent plus la prédiction que ses performances plus anciennes. Pour cela, on peut introduire la notion d'une distance pondérée dans laquelle certaines dimensions subiraient un homothétie pour en augmenter au diminuer le poids.
+
+% \textit{J'ajouterai ici la définition de cette distance}
+
+% \subsubsection{Prise en compte d'autres critères que le temps de trajet :}
+% Il pourrait être utile de prendre en compte d'autres critères que le temps de trajet pour déterminer la similitude entre deux trajets.
+% Le jour de la semaine, la météo ou même l'heure sont des facteurs influençant le temps de trajet.
+% L'heure étant une variable continue, nous pouvons simplement l'ajouter au vecteur $T_{\alpha}$ et utiliser ce vecteur de $n+1$ éléments pour la distance euclidienne. Pour ce qui est du jour de la semaine ou de la météo, ce sont des variable discrètes pour lesquelles il faudra définir une nouvelle fonction de distance.
+
+% \textit{Il faut encore que je fasse des recherches sur les k-NN avec variables discrètes si je m'aventure dans cette direction là.}
+
+
+% \section{Ensemble d'apprentissage}
+
+% Pour constituer l'ensemble d'apprentissage, il a fallu enregistrer la position de l'ensemble des véhicules du réseau de la STIB toutes les 20 secondes pendant plusieurs mois ce qui représente approximativement un demi million de  mesures par ligne et par sens.
+
+% Ces données ont une faible résolution temporelle (20 secondes) et spatiale (la position des véhicules est connue à un arrêt près) et sont parfois de mauvaise qualité (certains véhicules disparaissent pendant quelques minutes pour ré-apparaître plus loin par exemple). De plus, il n'a pas été possible de récupérer un identifiant en plus de la position pour les véhicules ce qui rend l'identification de trajets non triviale.
+
+% Il a donc fallu traiter ces données avant de pouvoir les utiliser pour effectuer des prédictions.
+% \textit{Explication rapide de la méthode} % TODO
+
+% Une fois ce traitement effectué, il reste un dernier détail à prendre en compte : les trajets extraits ne commencent ou ne finissent pas tous au terminus (soit parce que le véhicule n'as pas été jusqu'au bout ou à cause d'erreurs commises lors de l'extraction des trajets depuis les positions).
+
+% Les méthodes présentées ci-dessus ne fonctionnant pas avec des vecteurs contenant des éléments non définis, il y avait deux possibilités : soit ignorer les vecteurs incomplets soit extrapoler les valeurs manquantes.
+
+% La première méthode a été écartée car elle diminuait fortement la taille de l'ensemble d'apprentissage, la seconde a été privilégiée. Si le $i$ème élément d'un vecteur est manquant, il est remplacé par la moyenne des $i$èmes éléments des vecteurs dont la valeur est définie.
+
+
+% \section{Conclusion et perspectives}
+
+% Ce projet m'a permis d'apprendre énormément dans le domaine du machine learning ainsi que de proposer un modèle meilleur que l'actuel à la STIB pour leur prédiction en temps réel.
+
+% Ce travail pourrait être continué et amélioré soit en explorant d'autres méthodes d'apprentissage automatique comme les réseaux de neurones, la régression à l'aide de noyaux ou encore les ``support vector machines'' qui ont l'air prometteurs.
+
+% En restant dans le domaine des $k$ plus proches voisins. Plusieurs pistes sont explorables :
+% actuellement mon modèle ne prend en compte que les temps de trajet entre les arrêts dans le passé pour chaque bus.
+% Il serait intéressant d'ajouter d'autres variables comme la distance du bus par rapport au bus qui le précède, l'heure de la journée, le jour de la semaine, le type de jour (férié, vacances, ...), des variables météorologiques, la longueur des embouteillages dans la ville, ...
+
+% Pour finir, il serait aussi intéressant d'améliorer la qualité et la précision des données en entrée de l'algorithme, que ce soit par une meilleure imputation des données manquantes ou par une source de meilleure qualité car il y a de fortes chances que des données de meilleure qualité permettent des prédictions plus justes.
 
 \footnotesize
 \bibliographystyle{apalike}
 \bibliography{example}
 
+
+\newpage
+\begin{appendices}
+\section{Algorithmes de traitement et de collection de données}
+\subsection{Source de données}
+\label{align}
+Notre source primaire de donnés se présente comme ceci :
+
+\begin{figure}[h]
+   \centerline{\includegraphics[width=3cm]{mstib.png}}
+\end{figure}
+
+Chaque point rouge représentant au minimum un véhicule (mais parfois plus dans le cas ou ils seraient trop proches les uns des autres). La mesure correspondant à cette copie d'écran serait ceci (un vecteur de booléens) : \texttt{[vrai, faux, faux, faux, vrai, faux, faux, vrai, faux, faux]}
+
+\subsection{Problèmes rencontrés}
+
+\subsection{Description du fonctionnement}
+
+
+\end{appendices}
 
 \end{document}
