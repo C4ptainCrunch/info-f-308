@@ -31,25 +31,61 @@ tram et métro de la STIB\footnote{Société de transports en commun à Bruxelle
 Un réseau de transport en commun étant très difficile à modéliser à cause de sa complexité et par ce qu'il est très influençable par des événements stochastiques,
 l'approche qui sera utilisée ici sera non pas de modéliser le réseau pour prédire son état futur mais d'extrapoler grâce à des algorithmes de machine learning les trajets des véhicules grâce à des données historiques récoltées au préalable.
 
-% \section{État de l'art}
+\section{État de l'art}
+
+\subsection{Méthodes naïves}
+
+Plusieurs méthodes naïves sont décrites dans la littérature, souvent pour servir de témoin et pouvoir comparer les performances de l'algorithme proposé par rapport aux méthodes naïves [\cite{Altinkaya2013}].
+
+La première, la plus simple, est de prédire tout le temps la même durée de trajet entre deux arrêts en utilisant simplement la durée spécifiée dans les horaires statiques.
+
+La seconde, celle utilisée par la STIB, est de prédire le temps de trajet entre deux arrêts comme étant la moyenne des temps de trajets des $n$ (dans notre cas, 3) derniers véhicules de la ligne étant passés sur ce tronçon. Celle-ci donne malheureusement des résultats quasiment toujours moins bons que les autres méthodes existantes [\cite{Altinkaya2013}].
+
+Cette méthode donne déjà des résultats meilleurs que la précédente dans le cas ou les horaires ne sont pas respectés mais est limitée par le fait qu'il faut attendre que trois véhicules soient passés par une perturbation pour qu'elle soit pleinement prise en compte pour les prédictions suivantes.
+
+Un autre problème dont souffre cette méthode est le fait qu'un bus se remplir fortement en une seule fois (par exemple à la sortie d'une école ou lors de la fin d'un gros événement). Celui-ci sera donc fortement ralenti à cause du temps pris à charger et décharger ses passagers alors que le modèle prédira qu'il sera aussi rapide que les véhicules précédents.
+
+De plus, les véhicules qui suivent celui qui est retardé (du au précédent en retard) seront prédits en retard alors qu'ils risquent même d'être en avance, ayant moins de passagers à embarquer et débarquer.
+
+\cite{lin1999experimental} présente aussi une méthode hybride qui utilise la position GPS, l'horaire statique ainsi que le retard calculé pour prédire l'heure d'arrivée.
 
 
-% \subsection{Méthodes naïves}
 
-% On time, avg time, avg speed
+\subsection{Vitesse moyenne}
 
-% La première, la plus simple, est de prédire tout le temps la même durée de trajet entre deux arrêts en utilisant simplement la durée spécifiée dans les horaires statiques.
+D'autres modèles exploitent le fait que certaines compagnies équipent leur véhicules de systèmes emmenant en continu leur position GPS ainsi que leur vitesse. La position du véhicule n'étant évidement pas infiniment précise, il faut donc ensuite utiliser des techniques de \textit{map-matching} : faire correspondre le trajet mesuré au trajet prévu, sur une carte.
 
-% La seconde, celle utilisée par la STIB, est de prédire le temps de trajet entre deux arrêts comme étant la moyenne des temps de trajets des trois derniers véhicules de la ligne étant passés sur ce tronçon.
+Grâce à cette information, il est possible d'estimer la vitesse du véhicule (car sa vitesse instantanée pourrait être nulle et donc prédire un temps d'attente infini). Pour cela, \cite{Maciver2002} combine la vitesse moyenne (calculée à l'aide des mesures précédentes) avec la vitesse instantanée rapportée par le véhicule. Le temps restant jusqu'à l'arrêt suivant est ensuite estimé comme la distance restant à parcourir multipliée par la vitesse.
 
-% \subsection{Kalmann}
-% \subsection{SVM}
+\subsection{Régression}
 
-% \subsection{ANN}
 
-% subsection KNN
+
+
+
+\subsection{Filtres de Kalman}
+
+Les filtres de Kalman [\cite{kalman1960new}] sont utilisés couramment dans la littérature [\cite{wall1999algorithm, cathey2003prescription, shalaby2004prediction}] pour leur fonction première : filtrer et lisser les mesures bruitées reçues depuis les véhicules. De plus, ceux-ci, de par leur fonctionnement interne permettent aussi d'estimer de l'état d'un système.
+Dans notre cas, ils sont utilisés pour estimer l'état des véhicules, y compris leur vitesse et leur position.
+
+En plus de cela, les filtres de Kalman peuvent aussi être utilisés pour de la prédiction et \cite{cathey2003prescription} sont les premiers à le faire pour prédire des temps d'arrivée de transports en commun et on été suivis par beaucoup d'autres (voir \cite{yang2005travel, Altinkaya2013}).
+
+\cite{cathey2003prescription} ont montré que ceux-ci étaient meilleurs que les modèles basés sur des moyennes historiques et que ceux utilisant la régression. Cependant, ceux-ci ne prennent en compte qu'un trajet à la fois et ne profitent pas des données historiques pour apprendre des comportements récurrents.
+
+\subsection{$k$ plus proches voisins}
+
+La méthodes des $k$ plus proches voisins\footnote{$k$-nearest neighbors ou encore $k$-NN.}
+est algorithme de machine-learning
+\subsection{SVM}
+
+\subsection{ANN}
+
+
+
 
 \section{Méthode développée}
+
+Tous les réseaux urbains étant différents, les méthodes décrites dans l'état de l'art ne sont pas directement applicables à notre cas d'étude : le réseau de la STIB. Dans notre cas, nous ne disposons ni de trace GPS, ni d'information sur le taux de remplissage des véhicules ce qui élimine déjà une grande partie des méthodes présentées ci-dessus.
 
 La méthode qui a été développée dans le cadre de ce travail est la méthode des $k$ plus proches voisins.
 
@@ -65,7 +101,7 @@ La source de données qui a été choisie est la première pour deux raisons : l
 
 La source choisie souffre tout de même d'un problème non-négligeable : les véhicules apparaissent sur la ligne comme de simples point non identifiés. Il n'est donc pas possible de récupérer le numéro du véhicule, sa plaque d'immatriculation ou tout autre identifiant unique. De plus, si deux véhicules d'une même ligne sont suffisamment proches, ils n'apparaissent plus que comme un seul point.
 
-Le processus de collection des données est un programme \textit{Python3} utilisant \texttt{aiohttp} pour permettre des requêtes http asynchrones au serveur web de la STIB et ainsi permettre une période d’échantillonnage de 20 secondes pour chaque ligne, dans chaque sens (ce qui fait 142 mesures toutes les 20 secondes dans l'état actuel du réseau). La période de 20 secondes a été choisie empiriquement car une fréquence plus élevée imposait une charge trop lourde au serveur de le STIB et une fréquence plus faible aurait été trop imprécise.
+Le processus de collection des données est un programme \textit{Python3} utilisant \texttt{aiohttp} pour permettre des requêtes http asynchrones au serveur web de la STIB et ainsi permettre une période d’échantillonnage de 20 secondes pour chaque ligne, dans chaque sens (ce qui fait 142 mesures toutes les 20 secondes dans l'état actuel du réseau). La période a été choisie arbitrairement car une fréquence plus élevée imposait une charge trop lourde au serveur de le STIB et une fréquence plus faible aurait été trop imprécise.
 
 Cette collection de données a permis l'enregistrement d'approximativement 80 millions de mesures en 6 mois,réparties sur l'ensemble des lignes.
 
@@ -86,7 +122,7 @@ L'algorithme, bien qu'ayant pris du temps à développer et à paramétrer ne pr
 
 \subsection{Modèle d'apprentissage: les $k$ plus proches voisins}
 
-L'algorithme des $k$ plus proches voisins\footnote{$k$-nearest neighbors ou encore $k$-NN.}
+L'algorithme des $k$ plus proches voisins
 est une méthode d'intelligence artificielle qui peut être utilisée aussi bien pour de la classification que pour de la régression [\cite{trevor2009elements}].
 L'idée de cette méthode est de trouver les $k$ trajets les plus similaires à la cible et d'utiliser ceux-ci pour extrapoler le temps de trajet futur.
 
@@ -148,7 +184,7 @@ Pour cela, nous entraîné un $k$NN avec un $k$ fixé arbitrairement à 130 à l
 
 \begin{figure}
    \centerline{\includegraphics[width=8cm]{metrics.eps}}
-   \caption{\label{fig:rmse-vs-double}Comparaison entre le RMSE et le double négatif pour chacune des 6000 prédictions.}
+   \caption{\label{fig:rmse-vs-double}Comparaison entre le RMSE et le double négatif pour chacune des prédictions.}
 \end{figure}
 
 Nous avons ensuite comparé graphiquement deux à deux chacune des fonctions de score sur l'ensemble des 6000 prédictions. Nous pouvons en voir un exemple dans la figure~\ref{fig:rmse-vs-double} : chaque point représente une prédiction avec, en l’abscisse son score selon le RMSE et en ordonnée son score selon le RMSE double négatif. Des graphes pour toutes les autres comparaisons se trouvent en annexe.
@@ -176,60 +212,58 @@ double & 0.966 & 0.926 & 0.793 & 1.000 \\
   \caption{\label{tab:rho} Rho de Spearman entre chaque chaque paire de métrique de score.}
 \end{table}
 
-Le RMSE double négatif semblant être la métrique la plus intéressante à minimiser et le RMSE simple étant quasiment identique (voir table \ref{tab:rho} et figure \ref{fig:rmse-vs-double}), nous avons choisi d'utiliser par la suite le RMSE pour sa simplicité d'implémentation et sa rapidité (ce n'est que la norme du vecteur d'erreur, fonction qui est déjà implémentée rapidement dans \texttt{numpy})
+Le RMSE double négatif semblant être la métrique la plus intéressante à minimiser pour les utilisateurs et le RMSE simple étant quasiment identique (voir table \ref{tab:rho} et figure \ref{fig:rmse-vs-double}), nous avons choisi d'utiliser par la suite le RMSE pour sa simplicité d'implémentation et sa rapidité (ce n'est que la norme du vecteur d'erreur, fonction qui est déjà implémentée rapidement dans \texttt{numpy})
 
 \FloatBarrier
 \subsection{Score d'une modèle}
 
-% Par la suite, nous aurons aussi besoin de comparer deux modèles entre eux et donc l'ensemble de leurs prédictions.
-% Pour cela, nous aurons donc aussi besoin d'une métrique de score, non plus pour une prédiction unique, mais pour l'ensemble des prédiction qu'un modèle à faites.
-% Ici le choix des fonctions de score ont été assez simples. Nous avons comparé la moyenne, la médiane ainsi que le maximum de l'ensemble des scores des prédictions du modèle.
+Maintenant que nous savons comparer et donner un score à des prédictions, nous pouvons choisir une technique pour scorer un modèle en entier, ce qui nous permettra entre autres de choisir l'hyper-paramètre $k$ et de choisir entre le $k$NN pondéré ou non.
 
-% \textit{Décrire le set de données qui a servi à faire cette comparaison}
+Pour cela, nous devons agréger d'une manière ou d'une autres toutes les prédiction qu'un modèle a fait pour un ensemble de départ. Ici le choix des fonctions d’agrégation score ont été assez simples. Nous avons comparé la moyenne, la médiane ainsi que le maximum de l'ensemble des scores des prédictions du modèle.
 
-% Nous avons remarqué une corrélation assez forte, 0.822, entre la médiane et la moyenne ainsi qu'une non-corrélation totale entre le maximum et les deux autres (0.007 et 0.180).
+Pour cela, nous avons réutilisé le même set de données que dans la section précédente mais cette fois ci en faisant varier $k$ de 1 à 1000 en 20 incréments\footnote{Nous avons peu d’échantillons par rapport à la comparaison précédente car il est coûteux computationnellement de créer, entraîner et scorer des centaines de modèles.}.
 
+Nous avons remarqué une corrélation assez forte, 0.822, entre la médiane et la moyenne ainsi qu'une absence totale de corrélation entre le maximum et les deux autres (0.007 et 0.180).
 
-% \subsubsection{Pondération :}
-% Il serait peut-être appréciable que les performances récentes d'un véhicule influencent plus la prédiction que ses performances plus anciennes. Pour cela, on peut introduire la notion d'une distance pondérée dans laquelle certaines dimensions subiraient un homothétie pour en augmenter au diminuer le poids.
+Cela semblerait s'expliquer par le fait que même si un modèle est très précis la plus part du temps, il fera tout de même au moins une grosse erreur et que cette erreur est bornée supérieurement par la distance entre le trajet le plus lent et le plus rapide.
 
-% \textit{J'ajouterai ici la définition de cette distance}
+Au vu de la faible différence entre la moyenne et la médiane, mous avons arbitrairement choisi d'utiliser la moyenne comme fonction d'agrégation de scores.
 
-% \subsubsection{Prise en compte d'autres critères que le temps de trajet :}
-% Il pourrait être utile de prendre en compte d'autres critères que le temps de trajet pour déterminer la similitude entre deux trajets.
-% Le jour de la semaine, la météo ou même l'heure sont des facteurs influençant le temps de trajet.
-% L'heure étant une variable continue, nous pouvons simplement l'ajouter au vecteur $T_{\alpha}$ et utiliser ce vecteur de $n+1$ éléments pour la distance euclidienne. Pour ce qui est du jour de la semaine ou de la météo, ce sont des variable discrètes pour lesquelles il faudra définir une nouvelle fonction de distance.
+Pour éviter l'\textit{overfitting} (en français le sur-apprentissage), le fait qu'un modèle donne des résultats artificiellement bons pour l'ensemble d’entraînement au détriment de bonnes prédictions pour de nouveaux échantillons, nous avons utilisé la méthode de la validation croisée.
 
-% \textit{Il faut encore que je fasse des recherches sur les k-NN avec variables discrètes si je m'aventure dans cette direction là.}
+La validation croisée (ou plus communément \textit{cross-validation}) est une technique qui permet d'estimer la fiabilité d'un modèle grâce à un échantillonnage des données. Nous avons utilisé la méthode \textit{testset validation} pour des raisons de complexité computationnelle.
 
+Cette méthode fonctionne de la manière suivante : l'ensemble des trajets divisé en deux échantillons, l'un contenant $2/3$ des données et le second contenant le dernier tiers. Le premier devient l'ensemble d'apprentissage et sert uniquement à entraîner le modèle alors que le second devient l'ensemble de test et dont les prédictions serviront à scorer le modèle.
 
-% \section{Ensemble d'apprentissage}
+\subsection{Entraînement et choix des paramètres}
 
-% Pour constituer l'ensemble d'apprentissage, il a fallu enregistrer la position de l'ensemble des véhicules du réseau de la STIB toutes les 20 secondes pendant plusieurs mois ce qui représente approximativement un demi million de  mesures par ligne et par sens.
+Une fois les méthodes de score déterminées, nous pouvons choisir expérimentalement une valeur pour l'hyper-paramètre $k$ en cherchant à minimiser le score de notre modèle.
 
-% Ces données ont une faible résolution temporelle (20 secondes) et spatiale (la position des véhicules est connue à un arrêt près) et sont parfois de mauvaise qualité (certains véhicules disparaissent pendant quelques minutes pour ré-apparaître plus loin par exemple). De plus, il n'a pas été possible de récupérer un identifiant en plus de la position pour les véhicules ce qui rend l'identification de trajets non triviale.
+Nous voyons empiriquement que quand $k$ augmente, le score d'un modèle diminue de manière presque continue jusqu'à atteindre le $k$ optimal puis se mets à augmenter une fois ce point dépassé.
 
-% Il a donc fallu traiter ces données avant de pouvoir les utiliser pour effectuer des prédictions.
-% \textit{Explication rapide de la méthode} % TODO
+Au lieu d'itérer sur l'entièreté des valeurs possible de $k$ (par exemple l’intervalle $[1,1000]$) pour trouver la valeur minimale de $f(k)$, nous avons utilisé la méthode de Brent, décrite dans \cite{rivlin1973algorithms}, détaillée en annexe et implémentée dans \texttt{scipy} qui permet de minimiser une fonction dont l'expression analytique (et donc la dérivée) n'est pas connue.
 
-% Une fois ce traitement effectué, il reste un dernier détail à prendre en compte : les trajets extraits ne commencent ou ne finissent pas tous au terminus (soit parce que le véhicule n'as pas été jusqu'au bout ou à cause d'erreurs commises lors de l'extraction des trajets depuis les positions).
+Nous avons donc utilisé la méthode de Brent avec un nombre d'itérations limité à 40 et dont la convergence est considérée comme atteinte quand l'erreur relative est inférieure à 0,1.
 
-% Les méthodes présentées ci-dessus ne fonctionnant pas avec des vecteurs contenant des éléments non définis, il y avait deux possibilités : soit ignorer les vecteurs incomplets soit extrapoler les valeurs manquantes.
+Les résultats que nous avons obtenu sont des $k$ variant entre 100 et 800, selon les lignes. Le fait que c'est intervalle soit si large semble s'expliquer par le fait que chaque ligne à une fréquence différente et que par exemple, pour une ligne importante comme le 95 nous disposons de plus de 35000 trajets alors que pour une ligne à faible fréquence comme le 41 nous ne disposons que de 8000 trajets\footnote{Les mesures dont nous disposons pour les lignes à haute fréquence sont aussi de moins bonne qualité (il y a plus de chances que notre algorithme confonde deux véhicules ou ne détecte pas un dépassement quand les véhicules sont proches les uns des autres).}.
 
-% La première méthode a été écartée car elle diminuait fortement la taille de l'ensemble d'apprentissage, la seconde a été privilégiée. Si le $i$ème élément d'un vecteur est manquant, il est remplacé par la moyenne des $i$èmes éléments des vecteurs dont la valeur est définie.
+Nous avons ensuite effectué la même recherche de l'hyper-paramètre $k$ pour la version pondérée par la distance de $k$NN. Celle-ci a retourné approximativement les les mêmes $k$ optimaux, cependant la valeur de la fonction de score était systématiquement égale ou inférieure à la version non pondérée. Dans le cas de la ligne du 95, nous avons été jusqu'à constater un score deux fois meilleur pour la version pondérée.
+
+\section{Résultats}
 
 
-% \section{Conclusion et perspectives}
 
-% Ce projet m'a permis d'apprendre énormément dans le domaine du machine learning ainsi que de proposer un modèle meilleur que l'actuel à la STIB pour leur prédiction en temps réel.
+\section{Conclusion et perspectives}
 
-% Ce travail pourrait être continué et amélioré soit en explorant d'autres méthodes d'apprentissage automatique comme les réseaux de neurones, la régression à l'aide de noyaux ou encore les ``support vector machines'' qui ont l'air prometteurs.
+Ce projet m'a permis d'apprendre énormément dans le domaine du machine learning ainsi que de proposer un modèle meilleur que l'actuel à la STIB pour leur prédiction en temps réel.
 
-% En restant dans le domaine des $k$ plus proches voisins. Plusieurs pistes sont explorables :
-% actuellement mon modèle ne prend en compte que les temps de trajet entre les arrêts dans le passé pour chaque bus.
-% Il serait intéressant d'ajouter d'autres variables comme la distance du bus par rapport au bus qui le précède, l'heure de la journée, le jour de la semaine, le type de jour (férié, vacances, ...), des variables météorologiques, la longueur des embouteillages dans la ville, ...
+Ce travail pourrait être continué et amélioré soit en explorant d'autres méthodes d'apprentissage automatique comme les réseaux de neurones, la régression à l'aide de noyaux ou encore les ``support vector machines'' qui ont l'air prometteurs.
 
-% Pour finir, il serait aussi intéressant d'améliorer la qualité et la précision des données en entrée de l'algorithme, que ce soit par une meilleure imputation des données manquantes ou par une source de meilleure qualité car il y a de fortes chances que des données de meilleure qualité permettent des prédictions plus justes.
+En restant dans le domaine des $k$ plus proches voisins. Plusieurs pistes sont explorables :
+actuellement mon modèle ne prend en compte que les temps de trajet entre les arrêts dans le passé pour chaque bus.
+Il serait intéressant d'ajouter d'autres variables comme la distance du bus par rapport au bus qui le précède, l'heure de la journée, le jour de la semaine, le type de jour (férié, vacances, ...), des variables météorologiques, la longueur des embouteillages dans la ville,~...
+
+Pour finir, il serait aussi intéressant d'améliorer la qualité et la précision des données en entrée de l'algorithme, que ce soit par une meilleure imputation des données manquantes ou par une source de meilleure qualité car il y a de fortes chances que des données de meilleure qualité permettent des prédictions plus justes.
 
 \footnotesize
 \bibliographystyle{apalike}
@@ -252,6 +286,18 @@ Chaque point rouge représentant au minimum un véhicule (mais parfois plus dans
 \subsection{Problèmes rencontrés}
 
 \subsection{Description du fonctionnement}
+
+\subsection{Imputation des données manquantes}
+
+Une fois ce traitement effectué, il reste un dernier détail à prendre en compte : les trajets extraits ne commencent ou ne finissent pas tous au terminus (soit parce que le véhicule n'as pas été jusqu'au bout ou à cause d'erreurs commises lors de l'extraction des trajets depuis les positions).
+
+Les méthodes présentées ci-dessus ne fonctionnant pas avec des vecteurs contenant des éléments non définis, il y avait deux possibilités : soit ignorer les vecteurs incomplets soit extrapoler les valeurs manquantes.
+
+La première méthode a été écartée car elle diminuait fortement la taille de l'ensemble d'apprentissage, la seconde a été privilégiée. Si le $i$ème élément d'un vecteur est manquant, il est remplacé par la moyenne des $i$èmes éléments des vecteurs dont la valeur est définie.
+
+
+
+\section{Méthode de Brent}
 
 
 \end{appendices}
