@@ -35,27 +35,31 @@ l'approche qui sera utilisée ici sera non pas de modéliser le réseau pour pr�
 
 \subsection{Méthodes naïves}
 
-Plusieurs méthodes naïves sont décrites dans la littérature, souvent pour servir de témoin et pouvoir comparer les performances de l'algorithme proposé par rapport aux méthodes naïves [\cite{Altinkaya2013}].
+Plusieurs méthodes prédiction naïves de sont décrites dans la littérature, souvent pour servir de témoin et pouvoir comparer les performances de l'algorithme proposé par rapport aux méthodes naïves [\cite{Altinkaya2013}].
 
-La première, la plus simple, est de prédire tout le temps la même durée de trajet entre deux arrêts en utilisant simplement la durée spécifiée dans les horaires statiques.
+La plus simple des méthodes naïves est de prédire la durée de trajet entre deux arrêts en utilisant simplement la durée spécifiée dans les horaires statiques préparés par l'opérateur de la ligne. Cette méthode ne prenant aucun aléa en compte, elle n'est évidemment pas utilisée pour de la prédiction temps réel.
 
-La seconde, celle utilisée par la STIB, est de prédire le temps de trajet entre deux arrêts comme étant la moyenne des temps de trajets des $n$ (dans notre cas, 3) derniers véhicules de la ligne étant passés sur ce tronçon. Celle-ci donne malheureusement des résultats quasiment toujours moins bons que les autres méthodes existantes [\cite{Altinkaya2013}].
+La seconde méthode, celle utilisée par la STIB, est de prédire le temps de trajet entre deux arrêts comme étant la moyenne des temps de trajets des $n$ (dans notre cas, 3) derniers véhicules de la ligne étant passés sur ce tronçon. Celle-ci donne malheureusement des résultats quasiment toujours moins bons que les autres méthodes existantes [\cite{Altinkaya2013}].
 
-Cette méthode donne déjà des résultats meilleurs que la précédente dans le cas ou les horaires ne sont pas respectés mais est limitée par le fait qu'il faut attendre que trois véhicules soient passés par une perturbation pour qu'elle soit pleinement prise en compte pour les prédictions suivantes.
+Un de ces points faibles est qu'elle est limitée par le fait qu'il faut attendre que $n$ véhicules aient subi une perturbation donnée pour qu'elle soit pleinement prise en compte pour les prédictions suivantes (et sur ce temps là, la perturbation sera peut-être finie).
 
-Un autre problème dont souffre cette méthode est le fait qu'un bus se remplir fortement en une seule fois (par exemple à la sortie d'une école ou lors de la fin d'un gros événement). Celui-ci sera donc fortement ralenti à cause du temps pris à charger et décharger ses passagers alors que le modèle prédira qu'il sera aussi rapide que les véhicules précédents.
+Un autre problème dont souffre cette méthode est le fait qu'un bus peut se remplir fortement en une seule fois (par exemple à la sortie d'une école ou lors de la fin d'un gros événement). Celui-ci sera donc fortement ralenti à cause du temps pris à charger et décharger ses passagers alors que le modèle prédira qu'il sera aussi rapide que les véhicules précédents.
 
-De plus, les véhicules qui suivent celui qui est retardé (du au précédent en retard) seront prédits en retard alors qu'ils risquent même d'être en avance, ayant moins de passagers à embarquer et débarquer.
+De plus, les véhicules qui suivent celui qui est retardé seront prédits en retard alors qu'ils risquent même d'être en avance, ayant moins de passagers à embarquer et débarquer.
 
-\cite{lin1999experimental} présente aussi une méthode hybride qui utilise la position GPS, l'horaire statique ainsi que le retard calculé pour prédire l'heure d'arrivée.
+Il existe aussi des méthodes hybrides comme celle présentée dans \cite{lin1999experimental} qui utilisent la position GPS, l'horaire statique ainsi que le retard calculé pour prédire l'heure d'arrivée. Celles-ci nécessitent des données plus précisent et d'une meilleure résolution mais donnent aussi de meilleurs résultats.
 
 
 
 \subsection{Vitesse moyenne}
 
-D'autres modèles exploitent le fait que certaines compagnies équipent leur véhicules de systèmes emmenant en continu leur position GPS ainsi que leur vitesse. La position du véhicule n'étant évidement pas infiniment précise, il faut donc ensuite utiliser des techniques de \textit{map-matching} : faire correspondre le trajet mesuré au trajet prévu, sur une carte.
+Comme le modèle hybride présenté ci-dessus, d'autres modèles exploitent le fait que certaines compagnies équipent leur véhicules de systèmes qui émettent en continu leur position GPS ainsi que leur vitesse. La position du véhicule n'étant évidement pas infiniment précise, il faut donc ensuite utiliser des techniques de \textit{map-matching} : faire correspondre le trajet mesuré au trajet prévu, sur une carte, afin de connaître sa ``vraie'' position.
 
-Grâce à cette information, il est possible d'estimer la vitesse du véhicule (car sa vitesse instantanée pourrait être nulle et donc prédire un temps d'attente infini). Pour cela, \cite{Maciver2002} combine la vitesse moyenne (calculée à l'aide des mesures précédentes) avec la vitesse instantanée rapportée par le véhicule. Le temps restant jusqu'à l'arrêt suivant est ensuite estimé comme la distance restant à parcourir multipliée par la vitesse.
+Il est ensuite éventuellement possible de pouvoir transformer cette positions en deux dimensions en une position unidimensionnelle (la distance parcourue sur la ligne depuis le terminus) pour simplifier les algorithmes de prédiction.
+
+Grâce à ces informations, il est possible d'estimer la vitesse du véhicule (le vitesse instantanée pouvant être nulle et donc prédire un temps d'attente infini, nous ne pouvons pas l'utiliser directement).
+
+Pour cela, \cite{Maciver2002} combine la vitesse moyenne (calculée à l'aide des mesures précédentes) avec la vitesse instantanée rapportée par le véhicule. Le temps restant jusqu'à l'arrêt suivant est ensuite estimé comme la distance restant à parcourir multipliée par la vitesse.
 
 \subsection{Régression}
 
@@ -74,8 +78,7 @@ En plus de cela, les filtres de Kalman peuvent aussi être utilisés pour de la 
 
 \subsection{$k$ plus proches voisins}
 
-La méthodes des $k$ plus proches voisins\footnote{$k$-nearest neighbors ou encore $k$-NN.}
-est algorithme de machine-learning
+La méthodes des $k$ plus proches voisins\footnote{$k$-nearest neighbors ou encore $k$-NN.} est une méthode largement utilisée dans le domaine des transports publics. Celle-ci prend
 \subsection{SVM}
 
 \subsection{ANN}
@@ -103,7 +106,7 @@ La source choisie souffre tout de même d'un problème non-négligeable : les v�
 
 Le processus de collection des données est un programme \textit{Python3} utilisant \texttt{aiohttp} pour permettre des requêtes http asynchrones au serveur web de la STIB et ainsi permettre une période d’échantillonnage de 20 secondes pour chaque ligne, dans chaque sens (ce qui fait 142 mesures toutes les 20 secondes dans l'état actuel du réseau). La période a été choisie arbitrairement car une fréquence plus élevée imposait une charge trop lourde au serveur de le STIB et une fréquence plus faible aurait été trop imprécise.
 
-Cette collection de données a permis l'enregistrement d'approximativement 80 millions de mesures en 6 mois,réparties sur l'ensemble des lignes.
+Cette collection de données a permis l'enregistrement d'approximativement 80 millions de mesures en 6 mois, réparties sur l'ensemble des lignes.
 
 
 \subsection{Traitement des données}
@@ -199,6 +202,7 @@ Sa formule est définie comme ceci, $d$ étant la différence entre le rang déf
 \end{eqnarray}
 
 \begin{table}[h]
+\centering
 \begin{tabular}{|l|c|c|c|c|}
   \hline
   & RMSE & linéaire & exponentiel & double \\
@@ -251,6 +255,34 @@ Nous avons ensuite effectué la même recherche de l'hyper-paramètre $k$ pour l
 
 \section{Résultats}
 
+Le choix d'un hyper-paramètre permettant de minimiser l'erreur de prédiction nous permet maintenant de comparer nos prédictions faites à l'aide d'un $k$NN à celles faites par la STIB avec la méthode de la moyenne des trois derniers trajets.
+
+Pour cela, nous avons utilisé la même méthode échantillonnage que précédemment. Nous avons donc entraîné notre modèle avec $2/3$ des données et effectué des prédictions sur le tiers restant (l'ensemble de test). Ensuite, pour chaque trajet de l'ensemble de test, nous cherché les trois trajets précédents dans le temps (qu'ils appartiennent à l'ensemble de test ou non) pour en faire la moyenne et l'utiliser comme la prédiction que la STIB aurait faite.
+
+Les résultats démontrent l'efficacité de la méthode employée : pour certaines lignes, notre modèle prédit mieux que la STIB dans 75\% des cas.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|c|c|c|c|}
+  \hline
+  & Ligne 5 & Ligne 41 & Ligne 95 \\
+  \hline
+  meilleur &  76\%  & 70\%  & 63\%  \\
+  2x meilleur &  10\%  & 16\%  & 12\%  \\
+  2x pire &  0.5\% & 0.6\% & 0.8\% \\
+  \hline
+\end{tabular}
+  \caption{\label{tab:perf}Taux de réussite de notre modèle en fonction de la performance désirée}
+\end{table}
+
+
+De plus, on peut remarquer que lorsque que notre modèle se trompe plus que la STIB, ce n'est que de peu : $k$NN effectue une prédiction deux fois moins bonne que la STIB seulement dans 0.5\% des cas pour la ligne 5 (contre 10\% des cas pour des prédictions 2 fois meilleures). On peut observer\footnote{Des résultats pour d'autres lignes ainsi que d'autres visualisations de ceux-ci peuvent être trouvés en annexe} ce phénomène dans le tableau \ref{tab:perf} pour certaines valeurs cibles ou de manière générale dans la figure \ref{fig:heatmap}.
+
+\begin{figure}[h]
+   \centerline{\includegraphics[width=8cm]{error-heatmap.eps}}
+   \caption{\label{fig:heatmap} Estimation de la densité des trajets en fonction des erreurs de leurs prédictions selon le $k$NN ou la STIB pour la ligne 95. La ligne pointillée représente une erreur identique pour les deux modèles.}
+\end{figure}
+
 
 
 \section{Conclusion et perspectives}
@@ -298,6 +330,8 @@ La première méthode a été écartée car elle diminuait fortement la taille d
 
 
 \section{Méthode de Brent}
+
+\section{Résultats}
 
 
 \end{appendices}
