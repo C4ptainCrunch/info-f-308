@@ -7,6 +7,8 @@
 \usepackage[T1]{fontenc}
 \usepackage{placeins, latexsym, amssymb}
 
+\usepackage[hidelinks]{hyperref}
+
 \title{Prédiction des temps de trajet dans un réseau\\ de bus à l'aide de données historiques}
 \author{Nikita Marchant$^{1}$\\
 Superviseurs : Martine Labbé, Samuel Deleplanque
@@ -20,58 +22,55 @@ nimarcha@ulb.ac.be}
 
 \begin{abstract}
 
+Prédire en temps-réel l'heure d'arrivée d'un véhicule de transports en commun devient de plus en plus vital dans nos vies connectées. Ce travail analyse rapidement l'état de l'art sur les méthodes statistiques et de machine learning utilisées dans la littérature. Nous proposons puis implémentons un modèle de $k$ plus proches voisins ($k$NN) pour prédire les temps de trajets des véhicules de la STIB et nous démontrons pour finir la performance de ce modèle face au modèle actuellement déployé par la STIB.
+
 \end{abstract}
 
 \section{Introduction}
 
-Le but de ce projet est de pouvoir prédire, en temps réel, l'heure d'arrivée d'un véhicule de transport en commun aux arrêts de son trajet.
+Le but de ce projet est de pouvoir prédire, en temps réel, l'heure d'arrivée d'un véhicule de transports en commun aux arrêts de son trajet.
 Dans le cadre de ce travail, la prédiction sera effectuée pour des lignes de bus,
-tram et métro de la STIB\footnote{Société de transports en commun à Bruxelles (Belgique)}.
+trams et métros de la STIB\footnote{Société de transports en commun à Bruxelles (Belgique)}.
 
-Un réseau de transport en commun étant très difficile à modéliser à cause de sa complexité et par ce qu'il est très influençable par des événements stochastiques,
-l'approche qui sera utilisée ici sera non pas de modéliser le réseau pour prédire son état futur mais d'extrapoler grâce à des algorithmes de machine learning les trajets des véhicules grâce à des données historiques récoltées au préalable.
+Un réseau de transport en commun est difficile à modéliser en raison de sa complexité et par le fait qu'il est très influençable par des événements stochastiques. L'approche utilisée ici ne sera non pas de modéliser le réseau pour prédire son état futur, mais d'extrapoler, grâce à des algorithmes de machine learning, les trajets des véhicules grâce à des données historiques récoltées au préalable.
+
 
 \section{État de l'art}
 
 \subsection{Méthodes naïves}
 
-Plusieurs méthodes prédiction naïves de sont décrites dans la littérature, souvent pour servir de témoin et pouvoir comparer les performances de l'algorithme proposé par rapport aux méthodes naïves [\cite{Altinkaya2013}].
+Plusieurs méthodes de prédiction naïves sont décrites dans la littérature pour servir de témoin et pouvoir comparer les performances de l'algorithme proposé par rapport aux autres méthodes [\cite{Altinkaya2013}].
 
-La plus simple des méthodes naïves est de prédire la durée de trajet entre deux arrêts en utilisant simplement la durée spécifiée dans les horaires statiques préparés par l'opérateur de la ligne. Cette méthode ne prenant aucun aléa en compte, elle n'est évidemment pas utilisée pour de la prédiction temps réel.
+La plus simple des méthodes naïves est de prédire la durée de trajet entre deux arrêts en utilisant simplement la durée spécifiée dans les horaires statiques préparés par l'opérateur de la ligne. Cette méthode ne prenant aucun aléa en compte, elle n'est évidemment pas utilisée pour de la prédiction en temps réel.
 
 La seconde méthode, celle utilisée par la STIB, est de prédire le temps de trajet entre deux arrêts comme étant la moyenne des temps de trajets des $n$ (dans notre cas, 3) derniers véhicules de la ligne étant passés sur ce tronçon. Celle-ci donne malheureusement des résultats quasiment toujours moins bons que les autres méthodes existantes [\cite{Altinkaya2013}].
 
-Un de ces points faibles est qu'elle est limitée par le fait qu'il faut attendre que $n$ véhicules aient subi une perturbation donnée pour qu'elle soit pleinement prise en compte pour les prédictions suivantes (et sur ce temps là, la perturbation sera peut-être finie).
+Un des points faibles de cette méthode est qu'elle est limitée par le fait qu'il faut attendre que $n$ véhicules aient subi une perturbation donnée pour qu'elle soit pleinement prise en compte pour les prédictions suivantes (et sur ce temps là, la perturbation sera peut-être finie).
 
-Un autre problème dont souffre cette méthode est le fait qu'un bus peut se remplir fortement en une seule fois (par exemple à la sortie d'une école ou lors de la fin d'un gros événement). Celui-ci sera donc fortement ralenti à cause du temps pris à charger et décharger ses passagers alors que le modèle prédira qu'il sera aussi rapide que les véhicules précédents.
+Un autre problème dont souffre cette méthode est le fait qu'un bus peut se remplir fortement en une seule fois (par exemple à la sortie d'une école ou lors de la fin d'un gros événement). Celui-ci sera donc fortement ralenti à cause du temps pris à charger et à décharger ses passagers alors que le modèle prédira qu'il sera aussi rapide que les véhicules précédents.
 
-De plus, les véhicules qui suivent celui qui est retardé seront prédits en retard alors qu'ils risquent même d'être en avance, ayant moins de passagers à embarquer et débarquer.
+De plus, les véhicules qui suivent celui qui est retardé seront prédits en retard alors qu'ils risquent même d'être en avance, ayant moins de passagers à embarquer et à débarquer.
 
-Il existe aussi des méthodes hybrides comme celle présentée dans \cite{lin1999experimental} qui utilisent la position GPS, l'horaire statique ainsi que le retard calculé pour prédire l'heure d'arrivée. Celles-ci nécessitent des données plus précisent et d'une meilleure résolution mais donnent aussi de meilleurs résultats.
+Il existe aussi des méthodes hybrides comme celle présentée dans \cite{lin1999experimental} qui utilisent la position GPS, l'horaire statique ainsi que le retard calculé pour prédire l'heure d'arrivée. Celles-ci nécessitent des données plus précises et d'une meilleure résolution, mais donnent aussi de meilleurs résultats.
 
 
 
 \subsection{Vitesse moyenne}
 
-Comme le modèle hybride présenté ci-dessus, d'autres modèles exploitent le fait que certaines compagnies équipent leur véhicules de systèmes qui émettent en continu leur position GPS ainsi que leur vitesse. La position du véhicule n'étant évidement pas infiniment précise, il faut donc ensuite utiliser des techniques de \textit{map-matching} : faire correspondre le trajet mesuré au trajet prévu, sur une carte, afin de connaître sa ``vraie'' position.
+Comme le modèle hybride présenté ci-dessus, d'autres modèles exploitent le fait que certaines compagnies équipent leurs véhicules de systèmes qui émettent en continu leur position GPS ainsi que leur vitesse. La position du véhicule n'étant évidement pas infiniment précise, il faut donc ensuite utiliser des techniques de \textit{map-matching} : faire correspondre le trajet mesuré au trajet prévu, sur une carte, afin de connaître sa ``vraie'' position.
 
-Il est ensuite éventuellement possible de pouvoir transformer cette positions en deux dimensions en une position unidimensionnelle (la distance parcourue sur la ligne depuis le terminus) pour simplifier les algorithmes de prédiction.
+Il est ensuite éventuellement possible de transformer cette position, en deux dimensions, en une position unidimensionnelle : la distance parcourue sur la ligne depuis le terminus; pour simplifier les algorithmes de prédiction.
 
-Grâce à ces informations, il est possible d'estimer la vitesse du véhicule (le vitesse instantanée pouvant être nulle et donc prédire un temps d'attente infini, nous ne pouvons pas l'utiliser directement).
+Grâce à ces informations, il est possible d'estimer la vitesse du véhicule. La vitesse instantanée pouvant être nulle et donc prédire un temps d'attente infini, nous ne pouvons pas l'utiliser directement.
 
-Pour cela, \cite{Maciver2002} combine la vitesse moyenne (calculée à l'aide des mesures précédentes) avec la vitesse instantanée rapportée par le véhicule. Le temps restant jusqu'à l'arrêt suivant est ensuite estimé comme la distance restant à parcourir multipliée par la vitesse.
-
-\subsection{Régression}
-
-
-
+Pour cela, \cite{Maciver2002} combine la vitesse moyenne (calculée à l'aide des mesures précédentes) avec la vitesse instantanée rapportée par le véhicule. Le temps restant jusqu'à l'arrêt suivant est ensuite estimé comme la distance restant à parcourir multipliée par cette vitesse.
 
 
 \subsection{Filtres de Kalman}
 
 Les filtres de Kalman, développés initialement pour estimer la position d'objets détectés par des radars [\cite{kalman1960new}] sont utilisés couramment dans la littérature [\cite{wall1999algorithm, cathey2003prescription, shalaby2004prediction}] pour estimer la position ainsi que l'état (principalement la vitesse) de véhicules sur le réseau afin de filtrer et lisser les mesures bruitées reçues depuis les véhicules.
 
-En plus de cela, les filtres de Kalman peuvent aussi être utilisés pour de la prédiction et \cite{cathey2003prescription} sont les premiers à le faire pour prédire des temps d'arrivée de transports en commun. En effet, ces filtres peuvent être utilisés pour lisser un signal (en estimant l'état dans le passé), filtrer (dans le présent) ou prédire (en estimant l'état futur).
+De plus, les filtres de Kalman peuvent aussi être utilisés pour de la prédiction. \cite{cathey2003prescription} étaient les premiers à le faire pour prédire des temps d'arrivée de transports en commun. En effet, ces filtres peuvent être utilisés pour lisser un signal (en estimant l'état dans le passé), filtrer (dans le présent) ou prédire (en estimant l'état futur).
 
 Ceux-ci ont été suivis par beaucoup d'autres (voir \cite{yang2005travel, Altinkaya2013}).
 
@@ -79,21 +78,30 @@ Ceux-ci ont été suivis par beaucoup d'autres (voir \cite{yang2005travel, Altin
 
 \subsection{$k$ plus proches voisins}
 
-La méthodes des $k$ plus proches voisins\footnote{$k$-nearest neighbors ou encore $k$-NN.} est une méthode largement utilisée dans le domaine des transports publics. Celle-ci prend
-\subsection{SVM}
+La méthodes des $k$ plus proches voisins\footnote{$k$-nearest neighbors ou encore $k$-NN.} est une méthode largement utilisée dans le domaine des transports publics. Celle-ci est basée sur le fait que les trajets des véhicules sont influencés par un grand nombre de facteurs difficiles à prédire. Néanmoins, il est possible de chercher dans le passé des trajectoires similaires à la trajectoire à prédire. Dans de nombreux cas, ces trajectoires passées ont été soumises aux mêmes aléas que la trajectoire actuelle. Leur comportement peut donc être utilisé pour tenter de prédire le trajet futur. [\cite{tiesyte2008similarity}]
 
-\subsection{ANN}
+Il est nécessaire de déterminer quelles caractéristiques d'un trajet seront utilisées lors du calcul de la similarité entre deux trajets. \cite{baker2014predicting} utilisent par exemple la position le long de la ligne, la latitude, la longitude, l'instant présent, le jour de la semaine, l'heure du jour, le numéro de séquence du bus ainsi que la déviation par rapport à l'horaire, alors que \cite{tiesyte2008similarity} n'utilisent que la position le long de la ligne.
 
+Le nombre de variantes de ce modèle étant assez élevé, il est difficile d'en évaluer sa performance. Il semble par contre assez clair que celui-ci est plus performant que les méthodes naïves.
 
+\subsection{Réseaux de neurones}
+
+Les réseaux de neurones sont de plus en plus populaires dans la communauté du machine learning depuis que la capacité de calcul des ordinateurs modernes permet des implémentations rapides. Ceux-ci sont composés de neurones et de synapses. Habituellement, les neurones sont disposés par couches. Chaque neurone est relié grâce aux synapses à chaque neurone de la couche précédente et suivante. Les données d'entrées sont fournies à la première couche et ces données sont ensuite propagées à travers les synapses ainsi que les neurones jusqu'à la couche de sortie qui est utilisée comme prédiction.
+
+Chaque neurone dispose d'une fonction d'activation et chaque synapse d'un poids, il donc est intéressant d'essayer d'optimiser ceux-ci pour que la sortie produise une bonne prédiction. Cette opération s'appelle l'apprentissage : pendant cette période, l'algorithme utilise l'ensemble d’entraînement comme entrée et pour chaque vecteur de celui-ci, il produit une prédiction. Le réseau est ensuite modifié à chaque tour en fonction de l'erreur pour essayer de diminuer celle-ci petit à petit.
+
+Les réseaux de neurones sont fort appréciés pour leur capacité à découvrir des relations complexes et non linéaires entre des variables. Cela en fait de bons candidats dans le cas de prédictions de temps de trajet. [\cite{Chen2004}]
+
+Leur désavantage est le fait qu'il est assez difficile, délicat et encore coûteux computationnellement de faire converger le réseau vers un état optimal. [\cite{Altinkaya2013}]
 
 
 \section{Méthode développée}
 
-Tous les réseaux urbains étant différents, les méthodes décrites dans l'état de l'art ne sont pas directement applicables à notre cas d'étude : le réseau de la STIB. Dans notre cas, nous ne disposons ni de trace GPS, ni d'information sur le taux de remplissage des véhicules ce qui élimine déjà une partie des méthodes présentées ci-dessus.
+Tous les réseaux urbains étant différents, les méthodes décrites dans l'état de l'art ne sont pas directement applicables à notre cas d'étude : le réseau de la STIB. Dans notre cas, nous ne disposons ni de trace GPS, ni d'information sur le taux de remplissage des véhicules ni même de leur numéro de séquence, ce qui élimine déjà une partie des méthodes présentées ci-dessus.
 
 Il semble que la tendance actuelle est de plus en plus d'utiliser des modèles hybrides, mélangeant plusieurs techniques pour prendre les avantages de chacune. Nous proposons donc ici d'utiliser ici une méthode de collection de données originale, couplée à une prédiction à l'aide de la méthode des $k$ plus proches voisins et nous finirons par suggérer des améliorations à apporter à cette approche.
 
-L'implémentation a été découpées en 5 grandes parties : premièrement, la collection de données pour alimenter l'apprentissage du modèle, ensuite le traitement de ces données pour améliorer leur qualité et les transformer en un format utilisable par le modèle, l'étape suivante a été l'analyse et le choix de fonctions de score pour entraîner le modèle et pour finir, l’entraînement en lui même ainsi que l'analyse des résultats.
+L'implémentation a été découpée en 5 grandes parties : premièrement, la collection de données pour alimenter l'apprentissage du modèle, ensuite le traitement de ces données pour améliorer leur qualité et les transformer en un format utilisable par le modèle, l'étape suivante a été l'analyse et le choix de fonctions de score pour entraîner le modèle et pour finir, l’entraînement en lui même ainsi que l'analyse des résultats.
 
 \subsection{Collection des données}
 
@@ -101,7 +109,7 @@ La STIB ne mettant pas à disposition ses données historiques, il a fallu comme
 
 Les deux seules sources de données sur l'état du réseau en temps réel disponibles sur internet sont :
 \begin{itemize}
-    \item pour chaque ligne, la position précise à un arrêt prêt de chaque véhicule,
+    \item pour chaque ligne, la position précise à un arrêt près de chaque véhicule,
     \item pour chaque arrêt, une estimation du temps d'attente avant le prochain véhicule de chaque ligne.
 \end{itemize}
 \vspace{0.5em}
@@ -122,9 +130,9 @@ Les données récupérées grâce à la méthode décrite dans la section préc�
 
 De plus, les mesures ne sont pas directement utilisables par l'algorithme que nous avons choisi. En effet, nous ne disposons que d'une suite de positions (les sorties de notre programme de mesure sont des vecteurs horodatés de booléens, voir annexe) et ce dont nous avons besoin sont les durées que chaque véhicule a pris pour parcourir les distances entre deux arrêts consécutifs.
 
-Nous avons donc développé un algorithme qui assigne un identifiant à chaque nouveau point (ou véhicule) qui apparaît sur une ligne et qui, lors des mesures suivantes essaye, dans la mesure du possible, de détecter  si un point est déjà connu et qu'il s'est déplacé durant l’intervalle ou si c'est un nouveau point (par exemple un bus qui vient du dépôt et qui est injecté sur la ligne).
+Nous avons donc développé un algorithme qui assigne un identifiant à chaque nouveau point (ou véhicule) qui apparaît sur une ligne et qui, lors des mesures suivantes essaye dans la mesure du possible de détecter si un point est déjà connu et qu'il s'est déplacé durant l’intervalle ou si c'est un nouveau point (par exemple un bus qui vient du dépôt et qui est injecté sur la ligne).
 
-Grâce à ces identifiants uniques que nous générons, nous pouvons donc maintenant reconstituer des trajets, définis comme une suite de paires (position, instant) pour chaque véhicule que nous avons détecté. Cela est possible en parcourant simplement les mesures traitées et en enregistrant la position de chaque identifiant dans la ligne à chaque instant.
+Grâce à ces identifiants uniques que nous générons, nous pouvons reconstituer des trajets, définis comme une suite de paires <position, instant> pour chaque véhicule que nous avons détecté. Cela est possible en parcourant simplement les mesures traitées et en enregistrant la position de chaque identifiant dans la ligne à chaque instant.
 
 Dans l'optique de pouvoir proposer des prédictions en temps réel, l'algorithme supporte un mode dans lequel il a connaissance des trajets passés et non terminés (dont le véhicule n'est pas arrivé au terminus) et qui permet de compléter ces trajets au fur et à mesure que de nouvelles mesures sont disponibles.
 
@@ -318,7 +326,7 @@ Pour finir, il serait aussi intéressant d'améliorer la qualité et la précisi
 
 Je souhaite remercier mes superviseurs, Martine Labbé et Samuel Deleplanque pour m'avoir orienté et conseillé lors de la réalisation de ce travail.
 
-Je souhaite aussi remercier mes amis, Romain Fontaine, Pierre Gérard et Titouan Christophe et mon père, Thierry Marchant qui m'ont prodigué de précieux conseils ce que soit pour l'algorithme de détection de trajet, pour des techniques de machine learning, des statistiques ou peur leur oreille attentive.
+Je souhaite aussi remercier mes amis, Romain Fontaine, Pierre Gérard et Titouan Christophe et mon père, Thierry Marchant qui m'ont prodigué de précieux conseils ce que soit pour l'algorithme de détection de trajet, pour des techniques de machine learning, des statistiques ou pour leur oreille attentive.
 
 \footnotesize
 \bibliographystyle{apalike}
@@ -338,6 +346,8 @@ Notre source primaire de donnés se présente comme ceci :
 
 Chaque point rouge représentant au minimum un véhicule (mais parfois plus dans le cas ou ils seraient trop proches les uns des autres). La mesure correspondant à cette copie d'écran serait ceci (un vecteur de booléens) : \texttt{[vrai, faux, faux, faux, vrai, faux, faux, vrai, faux, faux]}
 
+
+\FloatBarrier
 \subsection{Problèmes rencontrés}
 
 Une fois empilés les uns au dessus des autres, ces vecteurs donnent parfois des résultats forts mauvais, comme ces mesures-ci de la ligne du 95 :
@@ -369,8 +379,28 @@ Nous pouvons y voir plusieurs problèmes :
 
 De plus il peut aussi y arriver qu'un bus retourne en arrière d'un arrêt pendant une ou deux mesures ou qu'un bus apparaissent en milieu de ligne.
 
+
+\FloatBarrier
 \subsection{Description du fonctionnement}
 
+L'algorithme de détection de trajet est découpé un plusieurs parties: l'alignement et la réduction.
+
+L'alignement fonctionne comme suit :
+\begin{enumerate}
+    \item Une première mesure est analysée et un identifiant unique est ajouté à chaque véhicule.
+    \item La mesure suivante est introduite dans l'algorithme
+    \item Nous parcourons la nouvelle mesure en commençant par la fin et pour chaque véhicule nous nous déplaçons en diagonale (dans la partie avec un temps et une position inférieurs)
+    Ce déplacement en diagonale est fait pour parcourir tout le quadrant supérieur gauche. Cependant l'algorithme limite l'amplitude de ce déplacement pour qu'il ne croise pas le trajet du véhicule suivant ou précédent. L'algorithme fait aussi attention à ne pas dépasser une certaine distance du point original (ici, 7 unités de temps donc 140 secondes et 5 unité de distance donc arrêts).
+    Une fois qu'un véhicule est détecté lors de ce déplacement, son identifiant est récupéré et assigné au véhicule inconnu.
+    \item Une fois cela fait, nous retournons à l'étape 2 jusqu'à ce qu'il n'y aie plus de nouvelle mesure.
+\end{enumerate}
+
+Cette technique, ainsi que ses paramètres ont étés déterminés empiriquement. Des tests ont été effectués sur la ligne 95 qui souffre fortement du phénomène de trains de véhicules qui fusionnent ainsi que de pertes d'informations et il semble que l'algorithme fait au moins aussi bien que ce qu'un humain pourrait faire.\footnote{Il est impossible de déterminer univoquement le comportement attendu de l'algorithme et donc impossible d'évaluer sa performances à l'aide de métriques claires.} Cette technique a aussi donné de bons résultats sur les lignes ayant des fréquences moindre ou étant plus stables.
+
+Après l'alignement, se passe l'étape de réduction : les positions des véhicules pouvant avoir été enregistrées plusieurs fois au même endroit lors de mesures consécutives à cause de la faible précision spatiale de notre source de donnée, nous ne gardons que la première mesure pour chaque position. Pour l'arrêt de départ nous devons néanmoins faire l'inverse : nous gardons la dernière mesure car il se peut qu'un véhicule soit resté plusieurs dizaines de minutes immobile avant son départ. Le fait de prendre la dernière mesure pour l'arrêt de départ et la première pour l'arrêt suivant fait que la quasi-totalité des temps de trajets mesurés entre ces deux arrêts sont égaux à la période échantillonnage (20 secondes). Nous n'utilisons donc pas ce premier segment dans le reste de ce travail.
+
+
+\FloatBarrier
 \subsection{Imputation des données manquantes}
 
 La détection des trajets n'étant pas parfaite ou les véhicules ne commençant pas toujours au terminus, il reste un problème : les trajets extraits ne commencent ou ne finissent pas tous au terminus et ne sont donc pas des vecteurs complets.
@@ -379,38 +409,42 @@ La méthode des $k$NN ne fonctionnant pas avec des vecteurs contenant des élém
 
 La première méthode a été écartée car elle diminuait fortement la taille de l'ensemble d'apprentissage et la seconde a donc été privilégiée. Si le $i$ème élément d'un vecteur est manquant, il est remplacé par la moyenne des $i$èmes éléments des vecteurs dont la $i$ème valeur est définie.
 
+
+\FloatBarrier
 \section{Comparaison des différentes métriques de score}
 
 Les figures \ref{fig:metrics-ann1} à \ref{fig:metrics-ann2} détaillent la relation entre les différentes métriques de score. On peut y voir la relativement bonne corrélation du RMSE avec les autres métriques et la mauvaise corrélation entre l'exponentiel et les autres.
 
 \begin{figure}[h]
-   \centerline{\includegraphics[width=9cm]{metrics-dist-exp.eps}}
+   \centerline{\includegraphics[width=7cm]{metrics-dist-exp.eps}}
    \caption{\label{fig:metrics-ann1}Comparaison entre le RMSE et le RMSE exponentiel pour chacune des prédictions.}
 \end{figure}
 
 \begin{figure}[h]
-   \centerline{\includegraphics[width=9cm]{metrics-dist-lin.eps}}
+   \centerline{\includegraphics[width=7cm]{metrics-dist-lin.eps}}
    \caption{Comparaison entre le RMSE et le RMSE linéaire pour chacune des prédictions.}
 \end{figure}
 
 \begin{figure}[h]
-   \centerline{\includegraphics[width=9cm]{metrics-exp-double.eps}}
+   \centerline{\includegraphics[width=7cm]{metrics-exp-double.eps}}
    \caption{Comparaison entre le RMSE exponentiel et le RMSE double négatif pour chacune des prédictions.}
 \end{figure}
 
 \begin{figure}[h]
-   \centerline{\includegraphics[width=9cm]{metrics-lin-double.eps}}
+   \centerline{\includegraphics[width=7cm]{metrics-lin-double.eps}}
    \caption{Comparaison entre le RMSE linéaire et le RMSE double négatif pour chacune des prédictions.}
 \end{figure}
 
 \begin{figure}[h]
-   \centerline{\includegraphics[width=9cm]{metrics-lin-exp.eps}}
+   \centerline{\includegraphics[width=7cm]{metrics-lin-exp.eps}}
    \caption{\label{fig:metrics-ann2}Comparaison entre le RMSE linéaire et RMSE exponentiel pour chacune des prédictions.}
 \end{figure}
 
+
+\FloatBarrier
 \section{Résultats}
 
-Graphes pour autres lignes
+La figure \ref{fig:density} montre bien que la densité des trajets est plus élevée du côté ou la STIB a prédit une plus grosse erreur (à droite). On remarque aussi que côté droit garde une densité plus élevée que le côté gauche, même pour des points plus éloignés de la sécante. Cela montre que lorsque $k$NN se trompe, il se trompe peu, contrairement à la STIB.
 
 \begin{figure}[h]
    \centerline{\includegraphics[width=9cm]{density.eps}}
